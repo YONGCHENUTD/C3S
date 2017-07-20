@@ -1,0 +1,28 @@
+Metadata-Version: 1.1
+Name: ngstemplate
+Version: 1.0.0
+Summary: Python Modules for XXXXXXXX
+Home-page: https://github.com/tsznxx/ngstemplate
+Author: Yunfei Wang
+Author-email: yfwang0405@gmail.com
+License: GNU General Public License (GPL)
+Description: Python Modules for XXXXXXXX
+        
+        1. Prerequisition
+        
+        2. Installation
+        
+        3. Examples
+        
+        4. Miscs
+        
+Keywords: Python NGS plot
+Platform: UNKNOWN
+Classifier: Environment :: Console
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU General Public License (GPL)
+Classifier: License :: Free for non-commercial use
+Classifier: Operating System :: Unix
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
