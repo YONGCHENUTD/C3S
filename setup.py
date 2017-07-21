@@ -1,5 +1,5 @@
 #!/usr/bin/python
-#Last-modified: 17 Jul 2017 11:00:55 AM
+#Last-modified: 21 Jul 2017 11:34:02 AM
 
 #         Module/Scripts Description
 # 
@@ -75,7 +75,7 @@ if __name__ == '__main__':
           long_description = long_description,
           package_dir={PROG:'src'},
           packages = [PROG],
-          scripts=[],
+          scripts=['bin/runC3S.py'],
           ext_modules=[],
           classifiers=['Environment :: Console',
                        'Development Status :: 3 - Alpha',
