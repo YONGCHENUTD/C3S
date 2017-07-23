@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 21 Jul 2017 11:31:53 AM
+# Last-modified: 23 Jul 2017 02:09:34 AM
 #
 #         Module/Scripts Description
 # 
@@ -81,12 +81,18 @@ if __name__=="__main__":
     c3s.Tools.bowtie2_SE(args.genome,args.fq2,args.prefix+"_R2",proc=args.proc,wdir=wdir)
     c3s.Utils.touchtime()
 
+    # Split the reads by GATC sites and take the larger one
+    c3s.Utils.touchtime("Split read by GATC sites ...")
+    c3s.Algorithms.ParseGATCSites("{0}/{1}_R1_un.fastq.gz".format(wdir,args.prefix),"{0}/{1}_R1_split.fastq.gz".format(wdir,args.prefix))
+    c3s.Algorithms.ParseGATCSites("{0}/{1}_R2_un.fastq.gz".format(wdir,args.prefix),"{0}/{1}_R2_split.fastq.gz".format(wdir,args.prefix))
+    c3s.Utils.touchtime()
+
     # 2nd round of mapping
     c3s.Utils.touchtime("SECOND ROUND OF MAPPING ...")
     c3s.Utils.touchtime("MAPPING READ 1 ...")
-    c3s.Tools.bowtie2_SE(args.genome,"{0}_R1_un.fastq.gz".format(args.prefix),args.prefix+"_R1_remap",proc=args.proc,wdir=wdir)
+    c3s.Tools.bowtie2_SE(args.genome,"{0}/{1}_R1_split.fastq.gz".format(wdir,args.prefix),args.prefix+"_R1_remap",proc=args.proc,wdir=wdir)
     c3s.Utils.touchtime("MAPPING READ 2 ...")
-    c3s.Tools.bowtie2_SE(args.genome,"{0}_R2_un.fastq.gz".format(args.prefix),args.prefix+"_R2_remap",proc=args.proc,wdir=wdir)
+    c3s.Tools.bowtie2_SE(args.genome,"{0}/{1}_R2_split.fastq.gz".format(wdir,args.prefix),args.prefix+"_R2_remap",proc=args.proc,wdir=wdir)
     c3s.Utils.touchtime()
     
 

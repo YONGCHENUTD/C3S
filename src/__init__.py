@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 21 Jul 2017 11:31:08 AM
+# Last-modified: 23 Jul 2017 02:10:53 AM
 #
 #         Module/Scripts Description
 # 
@@ -21,6 +21,7 @@
 
 import os
 import sys
+import gzip
 import time
 import errno
 import pandas
@@ -39,11 +40,107 @@ from subprocess import call,PIPE
 # Classes
 # ------------------------------------
 
+import copy
+class Fasta(object):
+    '''Fasta format.'''
+    def __init__(self,name, seq, description=''):
+        '''Initiate the fasta record.'''
+        self.id=name
+        self.seq = seq
+        self.description=description
+    def __len__(self):
+        '''get the length of sequence.'''
+        return len(self.seq)
+    def length(self):
+        '''get the length of sequence.'''
+        return len(self.seq)
+    def __str__(self):
+        '''String for output of Fasta.'''
+        return ">{0}{1}\n{2}".format(self.id,(self.description and ' '+self.description or ''),self.seq)
+    
+class Fastq(Fasta):
+    ''' Fastq format. '''
+    def __init__(self, name, seq, qual = '', description = ''):
+        ''' Initiation. '''
+        Fasta.__init__(self, name, seq, description)
+        self.qual = qual
+    def __str__(self):
+        ''' String for output of Fastq. '''
+        return "@{0}\n{1}\n+\n{2}".format(self.id,self.seq, len(self.qual)==self.length() and self.qual or ''.join(['I' for i in xrange(self.length())]))
+    
+class IO(object):
+    def mopen(infile,mode='r'):
+        ''' Open file with common or gzip types.'''
+        if infile.endswith(".gz"):
+            if 'b' not in mode:
+                mode += 'b'
+            return gzip.open(infile, mode)
+        else:
+            return open(infile,mode)
+    mopen=staticmethod(mopen)
+    def seqReader(infile,ftype='fasta'):
+        '''Read sequence files.'''
+        ftype=ftype.lower()
+        # Read lines
+        with IO.mopen(infile) as fh:
+            if ftype=='fasta':
+                line = fh.next()
+                if line[0] != ">":
+                    raise ValueError("Records in Fasta files should start with '>' character")
+                line = line.lstrip('>').rstrip().replace('\t',' ').split(' ')
+                name = line[0]
+                desc = ' '.join(line[1:])
+                seq = ''
+                while True:
+                    try:
+                        line = fh.next()
+                    except:
+                        if seq != '':
+                            yield Fasta(name, seq, desc)
+                        raise StopIteration
+                    if line[0] != ">":
+                        seq += line.rstrip()
+                    else:
+                        yield Fasta(name, seq, desc)
+                        line = line.lstrip('>').rstrip().replace('\t',' ').split(' ')
+                        name = line[0]
+                        desc = ' '.join(line[1:])
+                        seq = ''
+            elif ftype=='fastq':
+                while True:
+                    try:
+                        fid=fh.next().rstrip().lstrip('@')
+                        seq=fh.next().rstrip()
+                        fh.next()
+                        qual = fh.next().rstrip()
+                        yield Fastq(fid,seq,qual)
+                    except:
+                        raise StopIteration
+            else:
+                raise TypeError(ftype+" format is not supported.")
+            assert False, "Do not reach this line."
+    seqReader=staticmethod(seqReader)
+
 class Algorithms(object):
     '''
     '''
-    def test():
-        pass
+    def ParseGATCSites(fqfile,outfile):
+        '''
+        '''
+        with gzip.open(outfile,'wb') as ofh:
+            for fq in IO.seqReader(fqfile,'fastq'):
+                idx = fq.seq.find('GATC')  
+                if idx == -1:
+                    continue
+                # report the larger one
+                if idx< len(fq)/2-2: 
+                    fq.seq = fq.seq[idx:]
+                    fq.qual = fq.qual[idx:]            
+                else:
+                    fq.seq = fq.seq[:idx+4]
+                    fq.qual = fq.qual[:idx+4]
+                print >>ofh, fq
+    ParseGATCSites=staticmethod(ParseGATCSites)
 
 class Utils(object):
     '''
