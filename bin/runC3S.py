@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 23 Jul 2017 02:09:34 AM
+# Last-modified: 24 Jul 2017 01:08:09 PM
 #
 #         Module/Scripts Description
 # 
@@ -90,9 +90,9 @@ if __name__=="__main__":
     # 2nd round of mapping
     c3s.Utils.touchtime("SECOND ROUND OF MAPPING ...")
     c3s.Utils.touchtime("MAPPING READ 1 ...")
-    c3s.Tools.bowtie2_SE(args.genome,"{0}/{1}_R1_split.fastq.gz".format(wdir,args.prefix),args.prefix+"_R1_remap",proc=args.proc,wdir=wdir)
+    c3s.Tools.bowtie2_SE(args.genome,"{0}/{1}_R1_split.fastq.gz".format(wdir,args.prefix),args.prefix+"_R1_remap",min_qual=30,proc=args.proc,wdir=wdir)
     c3s.Utils.touchtime("MAPPING READ 2 ...")
-    c3s.Tools.bowtie2_SE(args.genome,"{0}/{1}_R2_split.fastq.gz".format(wdir,args.prefix),args.prefix+"_R2_remap",proc=args.proc,wdir=wdir)
+    c3s.Tools.bowtie2_SE(args.genome,"{0}/{1}_R2_split.fastq.gz".format(wdir,args.prefix),args.prefix+"_R2_remap",min_qual=30,proc=args.proc,wdir=wdir)
     c3s.Utils.touchtime()
     
 

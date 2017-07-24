@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 23 Jul 2017 02:10:53 AM
+# Last-modified: 24 Jul 2017 01:14:39 PM
 #
 #         Module/Scripts Description
 # 
@@ -126,13 +126,18 @@ class Algorithms(object):
     '''
     def ParseGATCSites(fqfile,outfile):
         '''
+        Parse GATC sites in unmapped reads. Split the reads into two parts, and keep the larger one.
         '''
+        total = 0
+        cnt = 0
         with gzip.open(outfile,'wb') as ofh:
             for fq in IO.seqReader(fqfile,'fastq'):
                 idx = fq.seq.find('GATC')  
+                total += 1
                 if idx == -1:
                     continue
                 # report the larger one
+                cnt += 1
                 if idx< len(fq)/2-2: 
                     fq.seq = fq.seq[idx:]
                     fq.qual = fq.qual[idx:]            
@@ -140,7 +145,12 @@ class Algorithms(object):
                     fq.seq = fq.seq[:idx+4]
                     fq.qual = fq.qual[:idx+4]
                 print >>ofh, fq
+        Utils.touchtime("Read with GATC sites: {0} out {1} reads.".format(cnt,total))
     ParseGATCSites=staticmethod(ParseGATCSites)
+    def MergeReadPairs(r1bams, r2bams):
+        '''
+        Identify read pairs from bam files generated from two rounds of mapping.
+        '''
 
 class Utils(object):
     '''
@@ -174,10 +184,12 @@ class Utils(object):
 class Tools(object):
     '''
     '''
-    def bowtie2_SE(genome, fqfile, prefix, proc=10, wdir=".", overwrite=False):
+    def bowtie2_SE(genome, fqfile, prefix, proc=10, wdir=".", min_qual=0, overwrite=False):
         '''
         Bowtie version 2
-        bowtie2 [options]* -x <bt2-idx> {-1 <m1> -2 <m2> | -U <r>} [-S <sam>]
+        cmd: 
+            >bowtie2 [options]* -x <bt2-idx> -U <r>} --un-gz <unmapped.fastq.gz |samtools view -Sb -q <min_qual> -F 4 - |samtools sort -n - -o <out.bam>
+        The mapped reads are sorted by name, so that it would be easier when find corresponding pairs later.
         '''
         Utils.touchtime("Checking tools and input files.")
         Utils.cmdmustexist('bowtie2')
@@ -205,14 +217,19 @@ class Tools(object):
         if proc >1:
             proc2 = int(proc/3.)
             proc1 = proc - proc2
-        cmd = "bowtie2 -x {genome} -U {fqfile} --un-gz {prefix}_un.fastq.gz {proc1} 2>{prefix}_bowtie2.log |samtools view -Sb -F 4 - |samtools sort {proc2} - -o {prefix}.bam 2>{prefix}_samtools.log".format(genome=genome, fqfile=fqfile, prefix=prefix, proc1= "-p {0}".format(proc1) if proc1>1 else "",proc2="-@ {0}".format(proc2) if proc2>1 else "")
-        Utils.touchtime("Running command: {0}".format(cmd))
+        cmd = '''bowtie2 -x {genome} -U {fqfile} --un-gz {prefix}_un.fastq.gz {proc1} 2>{prefix}_bowtie2.log |\
+samtools view -Sb {qual} -F 4 - |\
+samtools sort -n {proc2} - -o {prefix}.bam 2>{prefix}_samtools.log
+'''.format(genome=genome,
+           fqfile=fqfile, 
+           prefix=prefix, 
+           proc1= "-p {0}".format(proc1) if proc1>1 else "",
+           proc2="-@ {0}".format(proc2) if proc2>1 else "",
+           qual= "-q {0}".format(min_qual) if min_qual else "")
+        Utils.touchtime("Running command: {0}".format(cmd.replace("\\\n","")).rstrip())
         rc = call(cmd, shell=True)
         if rc != 0:
             os.remove(samfile)
-        else:
-            Utils.touchtime("Build BAM index.")
-            rc = call("samtools index {0}.bam".format(prefix),shell=True)
         Utils.touchtime("Bowtie2 finishes ...")
     bowtie2_SE=staticmethod(bowtie2_SE)
  
