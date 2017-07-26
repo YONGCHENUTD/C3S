@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 24 Jul 2017 01:08:09 PM
+# Last-modified: 26 Jul 2017 10:25:42 AM
 #
 #         Module/Scripts Description
 # 
@@ -72,6 +72,7 @@ if __name__=="__main__":
     # Mapping reads to genome
     wdir = args.wdir+"/010ReadMapping"
     c3s.Utils.touchdir(wdir)
+    wdir += "/"
 
     # 1st round of mapping
     c3s.Utils.touchtime("FIRST ROUND OF MAPPING ...")
@@ -93,6 +94,12 @@ if __name__=="__main__":
     c3s.Tools.bowtie2_SE(args.genome,"{0}/{1}_R1_split.fastq.gz".format(wdir,args.prefix),args.prefix+"_R1_remap",min_qual=30,proc=args.proc,wdir=wdir)
     c3s.Utils.touchtime("MAPPING READ 2 ...")
     c3s.Tools.bowtie2_SE(args.genome,"{0}/{1}_R2_split.fastq.gz".format(wdir,args.prefix),args.prefix+"_R2_remap",min_qual=30,proc=args.proc,wdir=wdir)
+    c3s.Utils.touchtime()
+
+    # Fix mate pairs
+    c3s.Utils.touchtime("Merge bam files and fix mate pairs ...")
+    bams = [wdir+args.prefix+f for f in ["_R1.bam", "_R2.bam", "_R1_remap.bam", "_R2_remap.bam"]]
+    c3s.Algorithms.FixMatePairs(bams,wdir+args.prefix,args.proc)
     c3s.Utils.touchtime()
     
 

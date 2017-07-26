@@ -1,5 +1,5 @@
 #!/usr/bin/python
-#Last-modified: 21 Jul 2017 11:34:02 AM
+#Last-modified: 24 Jul 2017 04:20:12 PM
 
 #         Module/Scripts Description
 # 
@@ -62,7 +62,8 @@ if __name__ == '__main__':
     install_requires = [ ["numpy >= 1.4.1"]]
     # Python 2.6 requires argparse
     if float(sys.version[:3]) == 2.6:
-        install_requires.append(["argparse >= 1.2.1"])
+        install_requires.append(["argparse >= 1.2.1"],
+                                ["pandas >= 0.15.2"])
 
     setup(name=PROG,
           version=VERSION,

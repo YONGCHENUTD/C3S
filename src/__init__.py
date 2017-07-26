@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 24 Jul 2017 01:14:39 PM
+# Last-modified: 26 Jul 2017 01:00:55 PM
 #
 #         Module/Scripts Description
 # 
@@ -24,9 +24,12 @@ import sys
 import gzip
 import time
 import errno
-import pandas
 
 from subprocess import call,PIPE
+
+# non-built-in packages
+import pandas
+import pysam
 
 # ------------------------------------
 # constants
@@ -124,10 +127,13 @@ class IO(object):
 class Algorithms(object):
     '''
     '''
-    def ParseGATCSites(fqfile,outfile):
+    def ParseGATCSites(fqfile,outfile,overwrite=False):
         '''
         Parse GATC sites in unmapped reads. Split the reads into two parts, and keep the larger one.
         '''
+        if not overwrite and os.path.isfile(outfile):
+            Utils.touchtime("Output file exists: {0}, skipped ...".format(outfile))
+            return
         total = 0
         cnt = 0
         with gzip.open(outfile,'wb') as ofh:
@@ -147,10 +153,81 @@ class Algorithms(object):
                 print >>ofh, fq
         Utils.touchtime("Read with GATC sites: {0} out {1} reads.".format(cnt,total))
     ParseGATCSites=staticmethod(ParseGATCSites)
-    def MergeReadPairs(r1bams, r2bams):
+    
+    def RmDup():
+        '''
+        '''
+        curchr, curpos = "",0
+        reads = set()
+        for line in sys.stdin:
+            items = line.split('\t')
+            if items[6] == "*": # not paired
+                continue
+            if (items[6]== "=" and int(items[7])>int(items[3])) or items[2] < items[6]: # read1 < read2
+                if items[2] == curchr and items[3] == curpos:
+                    reads.add("{0}:{1:0>10}".format(items[6],items[7]))
+                else:
+                    for read in reads:
+                        chrom, pos = read.split(':')
+                        print "{0}\t{1}\t{2}\t{3}".format(curchr, curpos, curchr if chrom=="=" else chrom,int(pos))
+                    curchr, curpos = items[2], items[3]
+                    reads = set()
+        # last cycle
+        for read in reads:
+            chrom, pos = read.split(':')
+            print "{0}\t{1}\t{2}\t{3}".format(curchr, curpos, curchr if chrom=="=" else chrom,int(pos))
+    RmDup=staticmethod(RmDup)
+    def RmDup2(inbam="-"):
+        '''
+        remove PCR duplicates from bam file. 
+        '''
+        sam = pysam.Samfile(inbam,'rb')
+        read = sam.next()
+        reads = {}
+        chrom, start = read.reference_id, read.reference_start
+        reads["{0}:{1:0>10}".format(read.next_reference_id, read.next_reference_start)] = read
+        for read in sam:
+            # read is paired mapped, and read < mate
+            if (not read.is_unmapped and not read.mate_is_unmapped) \
+                and cmp((read.reference_id,read.reference_start), \
+                (read.next_reference_id,read.reference_start,read.next_reference_start))<0:
+                if read.reference_id == chrom and read.reference_start == start: # read1 is the same
+                    pstr = "{0}:{1:0>10}".format(read.next_reference_id, read.next_reference_start)
+                    if pstr not in reads:
+                        reads[pstr] = read
+                else:
+                    # save first reads
+                    for pstr in sorted(reads.keys()):
+                        print "{0}\t{1}\t{2}\t{3}".format(sam.references[chrom],start,
+                                                          sam.references[reads[pstr].next_reference_id],
+                                                          reads[pstr].next_reference_start)
+                    # reinit
+                    reads = {}
+                    chrom, start = read.reference_id, read.reference_start
+                    reads["{0}:{1:0>10}".format(read.next_reference_id, read.next_reference_start)] = read
+    
+        # last cycle
+        for pstr in sorted(reads.keys()):
+            print "{0}\t{1}\t{2}\t{3}".format(sam.references[chrom],start,
+                                              sam.references[reads[pstr].next_reference_id],
+                                              reads[pstr].next_reference_start)
+    RmDup2=staticmethod(RmDup2)
+    def FixMatePairs(bams,prefix,nproc=1,overwrite=False):
         '''
         Identify read pairs from bam files generated from two rounds of mapping.
         '''
+        # check output file
+        if not overwrite and os.path.isfile("{0}.pairs".format(prefix)):
+            Utils.touchtime("Output file exists: {0}.pairs. Skipped ...".format(prefix))
+            return
+        # all on the fly    
+        cmd = '''samtools merge -nr -h {0} - {1} |samtools fixmate -pr - - |samtools sort -@ {2} - |samtools view |python -c "import c3s;c3s.Algorithms.RmDup()" >{3}.pairs'''.format(bams[0]," ".join(bams), max(nproc-3,1), prefix)
+        Utils.touchtime(cmd)
+        rc = call(cmd,shell=True)
+        if rc != 0:
+            raise ValueError("ERROR: FixMatePairs failed.")
+        Utils.touchtime("FixMatePairs finished ...")
+    FixMatePairs=staticmethod(FixMatePairs)
 
 class Utils(object):
     '''
