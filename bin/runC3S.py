@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 26 Jul 2017 10:25:42 AM
+# Last-modified: 18 Aug 2017 03:00:43 PM
 #
 #         Module/Scripts Description
 # 
@@ -46,6 +46,7 @@ def argParser():
     pr.add_argument("--prefix",dest="prefix",type=str,metavar='prefix',required=True,help="Prefix of result files.")
 
     po = p.add_argument_group('Optional')
+    po.add_argument("-r",dest="region",type=str,metavar="chr11:5305934",default="chr11:5305934",help="Bait genomic locus")
 #    po.add_argument("--method",dest="method",type=str,default='ttest',choices=['ttest'],help="Algorithms used for ranking metric calculation.")
 #    po.add_argument("--ascend",dest="ascend",action='store_true',default=False,help="Rank genes in ascending order. [Default is False.]")
 #    po.add_argument("--seed",dest="seed",type=int,metavar="1024",default=1024,help="Seed to generate random values.")
@@ -102,4 +103,12 @@ if __name__=="__main__":
     c3s.Algorithms.FixMatePairs(bams,wdir+args.prefix,args.proc)
     c3s.Utils.touchtime()
     
+    # Infer peak characteristics from the bait region
+    c3s.Utils.touchtime("Determine peak parameters from bait ...")
+    binsize = c3s.Algorithms.checkBait(args.region)
+    c3s.Utils.touchtime("Inferred binsize = {0} ...".format(binsize))
+    c3s.Utils.touchtime()
+
+    # Calculate intra- and inter-chrom interactions
+
 

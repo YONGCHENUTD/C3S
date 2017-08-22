@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 26 Jul 2017 01:00:55 PM
+# Last-modified: 22 Aug 2017 10:31:19 AM
 #
 #         Module/Scripts Description
 # 
@@ -24,16 +24,19 @@ import sys
 import gzip
 import time
 import errno
-
+import copy
 from subprocess import call,PIPE
 
 # non-built-in packages
-import pandas
+import numpy
 import pysam
+import pandas
 
 # ------------------------------------
 # constants
 # ------------------------------------
+
+debug = True
 
 # ------------------------------------
 # Misc functions
@@ -43,7 +46,6 @@ import pysam
 # Classes
 # ------------------------------------
 
-import copy
 class Fasta(object):
     '''Fasta format.'''
     def __init__(self,name, seq, description=''):
@@ -70,7 +72,53 @@ class Fastq(Fasta):
     def __str__(self):
         ''' String for output of Fastq. '''
         return "@{0}\n{1}\n+\n{2}".format(self.id,self.seq, len(self.qual)==self.length() and self.qual or ''.join(['I' for i in xrange(self.length())]))
-    
+
+class TabixFile(object):
+    '''
+    Class for Tabix file.
+    '''
+    def __init__(self,tbfile):
+        self.closed = True
+        self.infile = tbfile
+        if not os.path.isfile(self.infile+".tbi"):
+            self.infile = pysam.tabix_index(self.infile,seq_col=0,start_col=1,end_col=1,zerobased=True)
+        self.fh = pysam.Tabixfile(self.infile)
+        self.closed = False
+    def __enter__(self):
+        ''' Enter instance. '''
+        return self
+    def __exit__(self,etype,value,traceback):
+        ''' Exit instance. '''
+        self.close()
+    def __del__(self):
+        ''' On deletion. '''
+        self.close()
+    def close(self):
+        ''' close file handle. '''
+        if not self.closed:
+            self.fh.close()
+            self.closed = True
+    def GetDepth(self,chrom,start,end,readlen=36):
+        '''
+        Get the depth of the corresponding region.
+        Parameters:
+            chrom: string
+                chromosome
+            start, end: int
+                genomic coordinates.
+            readlen: int
+                read length
+        Returns:
+            depth: numpy.array
+                read depth.
+        '''
+        depth = numpy.zeros(end-start)
+        for item in self.fh.fetch(reference=chrom,start=start,end=end):
+            tstart = int(item.split()[1]) - start
+            tend = min(tstart+readlen,end-start)
+            depth[tstart:tend] += 1
+        return depth
+
 class IO(object):
     def mopen(infile,mode='r'):
         ''' Open file with common or gzip types.'''
@@ -153,65 +201,57 @@ class Algorithms(object):
                 print >>ofh, fq
         Utils.touchtime("Read with GATC sites: {0} out {1} reads.".format(cnt,total))
     ParseGATCSites=staticmethod(ParseGATCSites)
-    
-    def RmDup():
+    def _RmDup():
         '''
+        Removed duplicate read pairs.
         '''
-        curchr, curpos = "",0
+        pairs = {}
+        curchr, curpos = "", 0
         reads = set()
         for line in sys.stdin:
-            items = line.split('\t')
-            if items[6] == "*": # not paired
+            if line.startswith('@'):
+                # get chromosomes
+                if line[1:3].upper() == 'SQ':
+                    pairs[line.split()[1].split(":")[1]] = {} # SN:chr1
                 continue
-            if (items[6]== "=" and int(items[7])>int(items[3])) or items[2] < items[6]: # read1 < read2
+            items = line.split('\t')
+            items[3], items[7] = int(items[3]), int(items[7]) 
+            if (items[6]== "=" and items[7]>items[3]) or items[2] < items[6]: # read1 < read2
                 if items[2] == curchr and items[3] == curpos:
-                    reads.add("{0}:{1:0>10}".format(items[6],items[7]))
+                    if items[6] == '=':
+                        items[6] = curchr
+                    reads.add("{0}:{1:0>10}".format(items[6],items[7])) # read pair with the same starts only count once
                 else:
                     for read in reads:
                         chrom, pos = read.split(':')
-                        print "{0}\t{1}\t{2}\t{3}".format(curchr, curpos, curchr if chrom=="=" else chrom,int(pos))
+                        pos = int(pos)
+                        # read 1
+                        pairs[curchr].setdefault(curpos,{})
+                        pairs[curchr][curpos].setdefault(chrom,[])
+                        pairs[curchr][curpos][chrom].append(pos)
+                        # read 2
+                        pairs[chrom].setdefault(pos,{})
+                        pairs[chrom][pos].setdefault(curchr,[])
+                        pairs[chrom][pos][curchr].append(curpos)
                     curchr, curpos = items[2], items[3]
                     reads = set()
         # last cycle
         for read in reads:
             chrom, pos = read.split(':')
-            print "{0}\t{1}\t{2}\t{3}".format(curchr, curpos, curchr if chrom=="=" else chrom,int(pos))
-    RmDup=staticmethod(RmDup)
-    def RmDup2(inbam="-"):
-        '''
-        remove PCR duplicates from bam file. 
-        '''
-        sam = pysam.Samfile(inbam,'rb')
-        read = sam.next()
-        reads = {}
-        chrom, start = read.reference_id, read.reference_start
-        reads["{0}:{1:0>10}".format(read.next_reference_id, read.next_reference_start)] = read
-        for read in sam:
-            # read is paired mapped, and read < mate
-            if (not read.is_unmapped and not read.mate_is_unmapped) \
-                and cmp((read.reference_id,read.reference_start), \
-                (read.next_reference_id,read.reference_start,read.next_reference_start))<0:
-                if read.reference_id == chrom and read.reference_start == start: # read1 is the same
-                    pstr = "{0}:{1:0>10}".format(read.next_reference_id, read.next_reference_start)
-                    if pstr not in reads:
-                        reads[pstr] = read
-                else:
-                    # save first reads
-                    for pstr in sorted(reads.keys()):
-                        print "{0}\t{1}\t{2}\t{3}".format(sam.references[chrom],start,
-                                                          sam.references[reads[pstr].next_reference_id],
-                                                          reads[pstr].next_reference_start)
-                    # reinit
-                    reads = {}
-                    chrom, start = read.reference_id, read.reference_start
-                    reads["{0}:{1:0>10}".format(read.next_reference_id, read.next_reference_start)] = read
-    
-        # last cycle
-        for pstr in sorted(reads.keys()):
-            print "{0}\t{1}\t{2}\t{3}".format(sam.references[chrom],start,
-                                              sam.references[reads[pstr].next_reference_id],
-                                              reads[pstr].next_reference_start)
-    RmDup2=staticmethod(RmDup2)
+            # read 1
+            pairs[curchr].setdefault(curpos,{})
+            pairs[curchr][curpos].setdefault(chrom,[])
+            pairs[curchr][curpos][chrom].append(pos)
+            # read 2
+            pairs[chrom].setdefault(pos,{})
+            pairs[chrom][pos].setdefault(curchr,[])
+            pairs[chrom][pos][curchr].append(curpos)
+        for curchr in sorted(pairs):
+            for curpos in sorted(pairs[curchr]):
+                for chrom in sorted(pairs[curchr][curpos]):
+                    for pos in sorted(pairs[curchr][curpos][chrom]):
+                        print "{0}\t{1}\t{2}\t{3}".format(curchr,curpos,chrom,pos)
+    _RmDup=staticmethod(_RmDup)
     def FixMatePairs(bams,prefix,nproc=1,overwrite=False):
         '''
         Identify read pairs from bam files generated from two rounds of mapping.
@@ -220,14 +260,58 @@ class Algorithms(object):
         if not overwrite and os.path.isfile("{0}.pairs".format(prefix)):
             Utils.touchtime("Output file exists: {0}.pairs. Skipped ...".format(prefix))
             return
-        # all on the fly    
-        cmd = '''samtools merge -nr -h {0} - {1} |samtools fixmate -pr - - |samtools sort -@ {2} - |samtools view |python -c "import c3s;c3s.Algorithms.RmDup()" >{3}.pairs'''.format(bams[0]," ".join(bams), max(nproc-3,1), prefix)
+        # all on the fly
+        # merge SE reads
+        # fix mate pairs
+        # select paired reads
+        # sort by coordinates and print in SAM format
+        # Remove duplicates, keep the left reads of the pairs
+        cmd = '''samtools merge -nf -h {0} - {1} |samtools fixmate -pr - - |samtools view -h -f 1|samtools sort -@ {2} -O SAM -T {3} -|python -c "import c3s;c3s.Algorithms._RmDup()" >{3}.pairs'''.format(bams[0]," ".join(bams), max(nproc-3,1), prefix)
         Utils.touchtime(cmd)
         rc = call(cmd,shell=True)
         if rc != 0:
             raise ValueError("ERROR: FixMatePairs failed.")
+        # creat tabix index
+        Utils.touchtime("Build index for {0}.pairs".format(prefix))
+        pairfile = pysam.tabix_index("{0}.pairs".format(prefix))
         Utils.touchtime("FixMatePairs finished ...")
+        return pairfile
     FixMatePairs=staticmethod(FixMatePairs)
+    def DetermineBinsize(depth,smooth_window=100):
+        '''
+        Determine the binsize of a region. The binsize is defined as the continous region around the bait (middle) position whose average window depth is larger than the average depth of the whole depth array.
+        Paramegters:
+            depth: numpy.array
+                read depth
+            smooth_window: int
+                smooth window to determine the boundary.
+        Returns:
+            binsize: int
+                size of the bait region.
+        '''
+        avgd = depth.mean()*smooth_window
+        n, mid = len(depth), len(depth)/2
+        left, right = 0, n
+        # right boundary
+        start = depth[mid]
+        winsum = depth[mid:mid+smooth_window].sum()
+        for i in range(mid+smooth_window,n):
+            if winsum < avgd:
+                right = i-1
+                break
+            winsum += depth[i] - start
+            start = depth[i-smooth_window+1]
+        # left boundary
+        start = depth[mid-1]
+        winsum = depth[mid-smooth_window:mid].sum()
+        for i in range(mid-smooth_window-1,-1,-1):
+            if winsum < avgd:
+                left = i+1
+                break
+            winsum += depth[i] - start
+            start = depth[i+smooth_window-1]
+        return right-left
+    DetermineBinsize=staticmethod(DetermineBinsize)
 
 class Utils(object):
     '''
