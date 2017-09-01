@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 22 Aug 2017 10:31:19 AM
+# Last-modified: 31 Aug 2017 10:57:46 AM
 #
 #         Module/Scripts Description
 # 
@@ -31,12 +31,14 @@ from subprocess import call,PIPE
 import numpy
 import pysam
 import pandas
+import matplotlib
 
 # ------------------------------------
 # constants
 # ------------------------------------
 
 debug = True
+matplotlib.use('Agg')
 
 # ------------------------------------
 # Misc functions
@@ -98,26 +100,47 @@ class TabixFile(object):
         if not self.closed:
             self.fh.close()
             self.closed = True
-    def GetDepth(self,chrom,start,end,readlen=36):
+    def setChromSizes(self,chroms,sizes):
         '''
-        Get the depth of the corresponding region.
-        Parameters:
-            chrom: string
-                chromosome
-            start, end: int
-                genomic coordinates.
-            readlen: int
-                read length
-        Returns:
-            depth: numpy.array
-                read depth.
+        Set chromosome names and sizes.
         '''
-        depth = numpy.zeros(end-start)
-        for item in self.fh.fetch(reference=chrom,start=start,end=end):
-            tstart = int(item.split()[1]) - start
-            tend = min(tstart+readlen,end-start)
-            depth[tstart:tend] += 1
-        return depth
+        self.chroms, self.sizes = chroms, sizes
+    def GetLocalLinks(self,binsize,flanking_bins=11,nperm=1000,seed=1024): 
+        '''
+        Get all local links from the provided region.
+        '''
+        counts = []
+        nbins = 2*flanking_bins+1
+        for chrom, mid in Algorithms.RandomGenomicLoci(self.chroms,self.sizes,nbins*binsize,nperm,seed):
+            start, end = mid - nbins*binsize/2, mid + nbins*binsize/2
+            count = numpy.zeros(nbins,dtype=numpy.uint16)
+            for item in self.fh.fetch(reference=chrom,start=mid-binsize/2,end=mid+binsize/2):
+                items = item.split()
+                pos, ochrom, opos = int(items[1]), items[2], int(items[3])
+                # check intra-chrom interactions
+                if ochrom==chrom and start <= opos < end:
+                    count[(opos-start)/binsize] += 1
+            counts.append(count)
+        return counts
+    def GetInterChromLinks(self,binsize=1000000,nperm=1000,seed=1024):
+        '''
+        Get links between two chromosomal regions.
+        '''
+        counts = numpy.zeros(nperm,dtype=numpy.uint16)
+        locus = Algorithms.RandomGenomicLoci(self.chroms,self.sizes,binsize,4*nperm,seed)
+        for i in range(nperm):
+            chrom, mid = locus.next()
+            while True:
+                tchrom, tmid = locus.next()
+                if tchrom != chrom:
+                    break
+            start, end = tmid-binsize/2, tmid+binsize/2
+            for item in self.fh.fetch(reference=chrom,start=mid-binsize/2,end=mid+binsize/2):
+                items = item.split()
+                pos, ochrom, opos = int(items[1]), items[2], int(items[3])
+                if ochrom==chrom and start <= opos < end:
+                    counts[i] += 1
+        return counts
 
 class IO(object):
     def mopen(infile,mode='r'):
@@ -220,7 +243,7 @@ class Algorithms(object):
                 if items[2] == curchr and items[3] == curpos:
                     if items[6] == '=':
                         items[6] = curchr
-                    reads.add("{0}:{1:0>10}".format(items[6],items[7])) # read pair with the same starts only count once
+                    reads.add("{0}:{1}".format(items[6],items[7])) # read pair with the same starts only count once
                 else:
                     for read in reads:
                         chrom, pos = read.split(':')
@@ -238,6 +261,7 @@ class Algorithms(object):
         # last cycle
         for read in reads:
             chrom, pos = read.split(':')
+            pos = int(pos)
             # read 1
             pairs[curchr].setdefault(curpos,{})
             pairs[curchr][curpos].setdefault(chrom,[])
@@ -257,37 +281,42 @@ class Algorithms(object):
         Identify read pairs from bam files generated from two rounds of mapping.
         '''
         # check output file
-        if not overwrite and os.path.isfile("{0}.pairs".format(prefix)):
+        tbffile = "{0}.pairs".format(prefix)
+        if overwrite or not (os.path.isfile(tbffile) or os.path.isfile(tbffile+".gz")):
+            # all on the fly
+            # merge SE reads
+            # fix mate pairs
+            # select paired reads
+            # sort by coordinates and print in SAM format
+            # Remove duplicates, keep the left reads of the pairs
+            cmd = '''samtools merge -nf -h {0} - {1} |samtools fixmate -pr - - |samtools view -h -f 1|samtools sort -@ {2} -O SAM -T {3} -|python -c "import c3s;c3s.Algorithms._RmDup()" >{3}.pairs'''.format(bams[0]," ".join(bams), max(nproc-3,1), prefix)
+            Utils.touchtime(cmd)
+            rc = call(cmd,shell=True)
+            if rc != 0:
+                raise ValueError("ERROR: FixMatePairs failed.")
+        else:
             Utils.touchtime("Output file exists: {0}.pairs. Skipped ...".format(prefix))
-            return
-        # all on the fly
-        # merge SE reads
-        # fix mate pairs
-        # select paired reads
-        # sort by coordinates and print in SAM format
-        # Remove duplicates, keep the left reads of the pairs
-        cmd = '''samtools merge -nf -h {0} - {1} |samtools fixmate -pr - - |samtools view -h -f 1|samtools sort -@ {2} -O SAM -T {3} -|python -c "import c3s;c3s.Algorithms._RmDup()" >{3}.pairs'''.format(bams[0]," ".join(bams), max(nproc-3,1), prefix)
-        Utils.touchtime(cmd)
-        rc = call(cmd,shell=True)
-        if rc != 0:
-            raise ValueError("ERROR: FixMatePairs failed.")
         # creat tabix index
-        Utils.touchtime("Build index for {0}.pairs".format(prefix))
-        pairfile = pysam.tabix_index("{0}.pairs".format(prefix))
+        if overwrite or not os.path.isfile(tbffile+".gz"):
+            Utils.touchtime("Build index for {0}.pairs".format(prefix))
+            tbffile = pysam.tabix_index("{0}.pairs".format(prefix),seq_col=0,start_col=1,end_col=1)
+        else:
+            tbffile += ".gz"
+            Utils.touchtime("Index exists. Skipped ...")
         Utils.touchtime("FixMatePairs finished ...")
-        return pairfile
+        return tbffile
     FixMatePairs=staticmethod(FixMatePairs)
-    def DetermineBinsize(depth,smooth_window=100):
+    def DeterminePeakSize(depth,smooth_window=100):
         '''
-        Determine the binsize of a region. The binsize is defined as the continous region around the bait (middle) position whose average window depth is larger than the average depth of the whole depth array.
+        Determine the peak size of the bait region. The binsize is defined as the continous region around the bait (middle) position whose average window depth is larger than the average depth of the whole depth array.
         Paramegters:
             depth: numpy.array
                 read depth
             smooth_window: int
                 smooth window to determine the boundary.
         Returns:
-            binsize: int
-                size of the bait region.
+            left, right: int
+                boundary of the bait region.
         '''
         avgd = depth.mean()*smooth_window
         n, mid = len(depth), len(depth)/2
@@ -310,8 +339,233 @@ class Algorithms(object):
                 break
             winsum += depth[i] - start
             start = depth[i+smooth_window-1]
-        return right-left
-    DetermineBinsize=staticmethod(DetermineBinsize)
+        return left, right
+    DeterminePeakSize=staticmethod(DeterminePeakSize)
+    def RandomGenomicLoci(chroms,sizes,binsize=1000000, nloci=1000,seed=1024):
+        '''
+        Randomly sample positions from the whole genome.
+        Parameters:
+            chroms: list of strings
+                chromosome names
+            sizes: list of integers
+                chromosome lengths
+            binsize: integer
+                preset binsize. Default is 1000,000.
+            nloci: integer
+                number of random genomic loci
+            seed: integer
+                Random seed used to initialize the pseudo-random number generator. 
+        Yields:
+            chrom: string
+                chromosome name
+            pos: integer
+                genomic locus within [binsize/2, length-binsize/2]
+        '''
+        from bisect import bisect_left
+        rs = numpy.random.RandomState(seed=seed)
+        # remove short chromosomes
+        schroms, ssizes = zip(*[(chrom,size) for chrom, size in zip(chroms,sizes) if size >binsize])
+        cumsizes = (numpy.array(ssizes)-binsize).cumsum()
+        for pos in rs.randint(0,cumsizes[-1],nloci):
+            idx = bisect_left(cumsizes,pos)
+            yield schroms[idx], cumsizes[idx]-pos+binsize/2
+    RandomGenomicLoci=staticmethod(RandomGenomicLoci)
+    def ReadStats(logfile):
+        '''
+        Parse read mapping rates and mapping qualities.
+        '''
+        with open(logfile) as fh:
+            start = fh.tell()
+            fh.seek(0,2) 
+            fh.seek(max(start,fh.tell()-400)) 
+            lines = fh.readlines()[-6:]
+            total_reads = int(lines[0].split()[0])
+            mapped_reads = total_reads - int(lines[2].split()[0])
+        return total_reads, mapped_reads
+    ReadStats=staticmethod(ReadStats)
+        
+class Plot(object):
+    def BaitStatsPlot(tbffile,bait,outfile,extendsize=100000,readlen=36,smooth_window=100):
+        '''
+        '''
+        # Initiation
+        Utils.touchtime("Initialize tabix file ...")
+        bait_chrom,bait_pos = bait.split(':')
+        bait_pos = int(bait_pos)
+        tbf = TabixFile(tbffile)
+        with pysam.Samfile(tbffile.replace(".pairs.gz","_R1.bam")) as sam:
+            tbf.setChromSizes(sam.references,sam.lengths)
+        Utils.touchtime("Calculate peak region ...")
+        targets = {chrom:[] for chrom in tbf.chroms}
+        start, end = bait_pos-extendsize, bait_pos+extendsize
+        depth = numpy.zeros(end-start)
+        for item in tbf.fh.fetch(reference=bait_chrom,start=start,end=end):
+            items = item.split()
+            pos, ochrom, opos = int(items[1]), items[2], int(items[3])
+            targets[ochrom].append(opos)
+            tstart = int(item.split()[1]) - start
+            tend = min(tstart+readlen,end-start)
+            depth[tstart:tend] += 1
+        # calculate the peaksize
+        left, right = Algorithms.DeterminePeakSize(depth,smooth_window)
+        sdepth = depth[left:right]
+        Utils.touchtime("Peak size inferred from the bait region: {0}".format(right-left))
+        left, right = left+start, right+start
+
+        # count number of links
+        Utils.touchtime("Count bait related links ...")
+        counts = [0] *6
+        self_cnt = 0
+        mid = (left+right)/2
+        for pos in targets[bait_chrom]:
+            pos -= mid
+            if   pos < -1000000:
+                counts[0] += 1
+            elif pos < -100000:
+                counts[1] += 1
+            elif pos < left-mid:
+                counts[2] += 1
+            elif pos < right-mid:
+                self_cnt += 1
+            elif pos < 100000:
+                counts[3] += 1
+            elif pos < 1000000:
+                counts[4] += 1
+            else:
+                counts[5] += 1
+        intra_cnt = sum(counts)
+        chroms = sorted(targets,key=Utils.naturalkeys) 
+        bait_links = pandas.DataFrame({'cnt':[len(targets[chrom]) for chrom in chroms],'chrom':chroms})
+        bait_links.loc[bait_links.chrom==bait_chrom,'cnt'] = intra_cnt
+        inter_cnt = bait_links.loc[bait_links.chrom!=bait_chrom,'cnt'].sum()
+
+        # reads statistics
+        Utils.touchtime("Parse read mapping rates and qualities ...")
+        mdf = pandas.DataFrame({'Unmapped':[226,501],'Low MAPQ':[1056,816],'High MAPQ':[8721,8683]},index=['R1','R2'])
+
+        # plotting
+        Utils.touchtime("Plotting ...")
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+        sns.set_context('poster')
+        sns.set_style('ticks')
+        fig = plt.figure(figsize=[10,10])
+        ax1 = plt.subplot2grid((20,10),(0,0),rowspan=10,colspan=4)
+        ax2 = plt.subplot2grid((20,10),(0,5),rowspan=10,colspan=5)
+        ax3 = plt.subplot2grid((20,10),(10,0),rowspan=3,colspan=10)
+        ax4 = plt.subplot2grid((20,10),(15,0),rowspan=4,colspan=10)
+        
+        # read barplot
+        Plot.ReadsBarPlot(mdf,ax1)
+
+        # pie chart
+        Plot.BaitCountPie([self_cnt,intra_cnt,inter_cnt],['Self-','Intra-','Inter-'],ax2)
+
+        # bait count plot
+        Plot.BaitCountPlot(sdepth,counts,ax3)
+
+        # bait barplot
+        Plot.BaitBarPlot(bait_links,bait_chrom,ax4)
+        
+        # save figure
+        Utils.touchtime("Saving figure to {0} ...".format(outfile))
+        plt.savefig(outfile)
+        plt.close(fig)
+        return sdepth.shape[0]
+    BaitStatsPlot=staticmethod(BaitStatsPlot)
+    def ReadsBarPlot(mdf,ax):
+        '''
+        '''
+        mdf.plot.bar(stacked=True,ax=ax,legend=False,width=0.8,color=['whitesmoke','lightgrey','grey'])
+        ax.legend(loc=2, bbox_to_anchor=(0.85, 0.9))
+        ax.spines['right'].set_color('white')
+        ax.spines['top'].set_color('white')
+        ax.set_xticklabels(ax.get_xticklabels(),rotation=0)
+        ax.set_ylabel("# of reads (M)")
+        pdf = mdf.transpose()/mdf.sum(axis=1)*100
+        y1,y2 = 0, 0
+        for s1,s2,p1,p2 in zip(mdf.loc['R1',:],mdf.loc['R2',:],pdf['R1'],pdf['R2']):
+            ax.text(0,y1+s1/2.,"{0:.1f}%".format(p1),ha='center')#,va='center')
+            ax.text(1,y2+s2/2.,"{0:.1f}%".format(p2),ha='center')#,va='center')
+            y1 += s1
+            y2 += s2
+        return ax
+    ReadsBarPlot=staticmethod(ReadsBarPlot)
+    def BaitCountPie(cnts,labels,ax):
+        '''
+        Pie chart of self-, intra- and inter-links.
+        '''
+        import matplotlib.pyplot as plt
+        def make_autopct(values):
+            def my_autopct(pct):
+                total = sum(values)
+                val = int(round(pct*total/100.0))
+                return '{p:.2f}% ({v:d})'.format(p=pct,v=val)
+            return my_autopct
+        patches, texts, _ = ax.pie(cnts, labels=labels,colors= ['whitesmoke', 'lightblue', 'lightskyblue'],autopct=make_autopct(cnts), shadow=False, startangle=60, labeldistance=0.8,pctdistance=0.45,textprops={'ha':'left'})
+        centre_circle = plt.Circle((0,0),0.75,color='black', fc='white',linewidth=1.25)
+        ax.add_artist(centre_circle)
+        ax.axis('equal')
+        #ax.set_ylim(-1,1)
+        #ax.set_xlim(-1,1)
+        #ax.legend(patches,labels,ncol=3,loc='upper center')
+        return ax
+    BaitCountPie=staticmethod(BaitCountPie)
+    def BaitCountPlot(sdepth,counts,ax):
+        peaksize = sdepth.shape[0]
+        mid = peaksize/2
+        ax.plot(numpy.arange(-mid,-mid+peaksize)/float(peaksize),sdepth,linewidth=1)
+        ax.set_xlim(-6.5,6.5)
+        ax.spines['top'].set_color('white')
+        ax.spines['left'].set_color('white')
+        ax.spines['right'].set_color('white')
+
+        ax.set_yticks([])
+        tick_loci = [-4.5,-2.5,-0.5,0,0.5,2.5,4.5]
+        ax.set_xticks(tick_loci)
+        ax.set_xticklabels(['-1M','-100K','','HS3','','100K','1M'])
+
+        # counts
+        counts_loci = [-5.5,-3.5,-1.5,1.5,3.5,5.5]
+        ymin, ymax = ax.get_ylim()
+        for c,i in zip(counts,counts_loci):
+            ax.text(i,0.2*ymax,c,va='bottom')
+        return ax
+    BaitCountPlot=staticmethod(BaitCountPlot)
+    def BaitBarPlot(df,bait_chrom,ax):
+        '''
+        Draw bait links barplot.
+        '''
+        # count of links from the bait region
+        bait_cnt = df.cnt[df.chrom==bait_chrom].values[0]
+        max_cnt = df.cnt[df.chrom!=bait_chrom].max()
+        df.loc[df.chrom==bait_chrom,'cnt'] = int(max_cnt*1.5)
+
+        # barplot
+        ax.bar(df.index[::2],df.cnt[::2],width=0.9,color='darkgrey')
+        ax.bar(df.index[1::2],df.cnt[1::2],width=0.9,color='lightgrey')
+        ax.spines['top'].set_color('white')
+        ax.spines['left'].set_color('white')
+        ax.spines['right'].set_color('white')
+        ax.set_xlim(-0.5,df.index[-1]+0.5)
+        ax.axis('off')
+
+        # bait region
+        ax.bar(df.index[df.chrom==bait_chrom],max_cnt*1.5,width=0.9,color='lightblue')
+        ax.bar(df.index[df.chrom==bait_chrom],max_cnt*1.3,width=0.9,color='lightgrey')
+        ax.bar(df.index[df.chrom==bait_chrom],max_cnt*1.2,width=0.9,color='lightblue')
+
+        # numbers and chroms
+        ymin, ymax = ax.get_ylim()
+        offset = 0.03*(ymax-ymin)
+        for i,chrom,cnt in zip(df.index,df.chrom,df.cnt):
+            if chrom == bait_chrom:
+                ax.text(i,cnt+offset,bait_cnt,ha='center',va='bottom')
+            else:
+                ax.text(i,cnt+offset,cnt,ha='center',va='bottom')
+            ax.text(i,-offset,chrom[3:],ha='center',va='top')
+        return ax
+    BaitBarPlot=staticmethod(BaitBarPlot)
 
 class Utils(object):
     '''
@@ -341,6 +595,17 @@ class Utils(object):
                 if e.errno != errno.EEXIST:
                     raise
     touchdir=staticmethod(touchdir)
+    def naturalkeys(text):
+        '''
+        nlist = sorted(old_list,key=natural_keys) #sorts in human order
+        http://nedbatchelder.com/blog/200712/human_sorting.html
+        (See Toothy's implementation in the comments)
+        '''
+        import re
+        def atoi(text):
+            return int(text) if text.isdigit() else text
+        return [ atoi(c) for c in re.split('(\d+)', text) ]
+    naturalkeys=staticmethod(naturalkeys)
 
 class Tools(object):
     '''

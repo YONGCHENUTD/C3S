@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 18 Aug 2017 03:00:43 PM
+# Last-modified: 31 Aug 2017 11:35:46 AM
 #
 #         Module/Scripts Description
 # 
@@ -46,13 +46,13 @@ def argParser():
     pr.add_argument("--prefix",dest="prefix",type=str,metavar='prefix',required=True,help="Prefix of result files.")
 
     po = p.add_argument_group('Optional')
-    po.add_argument("-r",dest="region",type=str,metavar="chr11:5305934",default="chr11:5305934",help="Bait genomic locus")
-#    po.add_argument("--method",dest="method",type=str,default='ttest',choices=['ttest'],help="Algorithms used for ranking metric calculation.")
-#    po.add_argument("--ascend",dest="ascend",action='store_true',default=False,help="Rank genes in ascending order. [Default is False.]")
-#    po.add_argument("--seed",dest="seed",type=int,metavar="1024",default=1024,help="Seed to generate random values.")
-#    po.add_argument("--min_gene",dest="mingene",type=int,metavar="15",default=15,help="Minimum number of genes in gene set.")
+    po.add_argument("--bait",dest="bait",type=str,metavar="chr11:5305934",default="chr11:5305934",help="Bait genomic locus. [Default=\"chr11:5305934\"]")
+    po.add_argument("--extendsize",dest="extendsize",type=int,metavar="10000",default=100000,help="Length to be extended from bait regions. [Defaut=10000]")
+    po.add_argument("--readlen",dest="readlen",type=int,metavar="36",default=36,help="Read length. [Default=36]")
+    po.add_argument("--seed",dest="seed",type=int,metavar="1024",default=1024,help="Seed to generate random values. [Default=1024].")
+    po.add_argument("--smooth-window",dest="smooth_window",type=str,metavar="100",default=100,help="Smooth window for peak size inference. [Default=100].")
 #    po.add_argument("--max_gene",dest="maxgene",type=int,metavar="500",default=500,help="Maximum number of genes in gene set.")
-    po.add_argument("-w",dest="wdir",type=str,metavar='"."',default=".",help="Working directory.")
+    po.add_argument("-w",dest="wdir",type=str,metavar='"."',default=".",help="Working directory. [Default=\".\"].")
     po.add_argument("-p",dest='proc',type=int,metavar='10',default=10,help="Number of processes. [Default=10]")
     if len(sys.argv)==1:
         sys.exit(p.print_help())
@@ -100,15 +100,19 @@ if __name__=="__main__":
     # Fix mate pairs
     c3s.Utils.touchtime("Merge bam files and fix mate pairs ...")
     bams = [wdir+args.prefix+f for f in ["_R1.bam", "_R2.bam", "_R1_remap.bam", "_R2_remap.bam"]]
-    c3s.Algorithms.FixMatePairs(bams,wdir+args.prefix,args.proc)
+    tbffile = c3s.Algorithms.FixMatePairs(bams,wdir+args.prefix,args.proc)
     c3s.Utils.touchtime()
-    
+
     # Infer peak characteristics from the bait region
-    c3s.Utils.touchtime("Determine peak parameters from bait ...")
-    binsize = c3s.Algorithms.checkBait(args.region)
-    c3s.Utils.touchtime("Inferred binsize = {0} ...".format(binsize))
+    c3s.Utils.touchtime("Draw bait figures ...")
+    peaksize = c3s.Plot.BaitStatsPlot(tbffile,args.bait,
+                                      wdir+args.prefix+"_stats.pdf",
+                                      extendsize=args.extendsize,
+                                      readlen=args.readlen,
+                                      smooth_window=args.smooth_window)
     c3s.Utils.touchtime()
 
     # Calculate intra- and inter-chrom interactions
+
 
 
