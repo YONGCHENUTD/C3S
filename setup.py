@@ -1,5 +1,5 @@
 #!/usr/bin/python
-#Last-modified: 01 Sep 2017 09:28:53 AM
+#Last-modified: 08 Sep 2017 11:29:13 AM
 
 #         Module/Scripts Description
 # 
@@ -67,7 +67,9 @@ if __name__ == '__main__':
                              "pandas >= 0.15.2",
                              "matplotlib >= 2.0.2",
                              "seaborn >= 0.7.1",
-                             "pysam >= 0.11.2.2"])
+                             "pysam >= 0.11.2.2",
+                             "scipy >= 0.19.1",
+                             "statsmodels >= 0.8.0"])
 
     setup(name=PROG,
           version=VERSION,

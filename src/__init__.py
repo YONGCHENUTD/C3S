@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 31 Aug 2017 10:57:46 AM
+# Last-modified: 12 Sep 2017 10:04:55 AM
 #
 #         Module/Scripts Description
 # 
@@ -32,6 +32,8 @@ import numpy
 import pysam
 import pandas
 import matplotlib
+from scipy.stats import nbinom
+from statsmodels.base.model import GenericLikelihoodModel
 
 # ------------------------------------
 # constants
@@ -100,47 +102,205 @@ class TabixFile(object):
         if not self.closed:
             self.fh.close()
             self.closed = True
-    def setChromSizes(self,chroms,sizes):
+    def setChromSizes(self,bamfile):
         '''
         Set chromosome names and sizes.
         '''
-        self.chroms, self.sizes = chroms, sizes
-    def GetLocalLinks(self,binsize,flanking_bins=11,nperm=1000,seed=1024): 
+        with pysam.Samfile(bamfile) as sam:
+            self.chroms, self.sizes = sam.references,sam.lengths
+    def BaitStatsPlot(self,bait,outfile,extendsize=100000,readlen=36,smooth_window=100):
         '''
-        Get all local links from the provided region.
         '''
+        # Initiation
+        Utils.touchtime("Initialize tabix file ...")
+        bait_chrom,bait_pos = bait.split(':')
+        bait_pos = int(bait_pos)
+        self.bait_chrom, self.bait_pos = bait_chrom, bait_pos
+        Utils.touchtime("Calculate peak region ...")
+        start, end = bait_pos-extendsize, bait_pos+extendsize
+        depth = numpy.zeros(end-start)
+        for item in self.fh.fetch(reference=bait_chrom,start=start,end=end):
+            items = item.split()
+            pos, ochrom, opos = int(items[1]), items[2], int(items[3])
+            tstart = int(item.split()[1]) - start
+            tend = min(tstart+readlen,end-start)
+            depth[tstart:tend] += 1
+
+        # calculate the peaksize
+        left, right = Algorithms.DeterminePeakSize(depth,smooth_window)
+        sdepth = depth[left:right]
+        Utils.touchtime("Peak size inferred from the bait region: {0}".format(right-left))
+        left, right = left+start, right+start
+        self.left, self.right = left, right
+        self.peaksize = right-left
+
+        # fetch bait peak links
+        Utils.touchtime("Count bait related links ...")
+        targets = {chrom:[] for chrom in self.chroms}
+        for item in self.fh.fetch(reference=bait_chrom,start=left,end=right):
+            items = item.split()
+            ochrom, opos = items[2], int(items[3])
+            targets[ochrom].append(opos)
+
+        # count number of links
+        counts = [0] *6
+        self_cnt = 0
+        mid = (left+right)/2
+        for pos in targets[bait_chrom]:
+            pos -= mid
+            if   pos < -1000000:
+                counts[0] += 1
+            elif pos < -100000:
+                counts[1] += 1
+            elif pos < left-mid:
+                counts[2] += 1
+            elif pos < right-mid:
+                self_cnt += 1
+            elif pos < 100000:
+                counts[3] += 1
+            elif pos < 1000000:
+                counts[4] += 1
+            else:
+                counts[5] += 1
+        intra_cnt = sum(counts)
+        chroms = sorted(targets,key=Utils.naturalkeys) 
+        bait_links = pandas.DataFrame({'cnt':[len(targets[chrom]) for chrom in chroms],'chrom':chroms})
+        bait_links.loc[bait_links.chrom==bait_chrom,'cnt'] = intra_cnt
+        inter_cnt = bait_links.loc[bait_links.chrom!=bait_chrom,'cnt'].sum()
+
+        # reads statistics
+        Utils.touchtime("Parse read mapping rates and qualities ...")
+        mdf = pandas.DataFrame({'Unmapped':[226,501],'Low MAPQ':[1056,816],'High MAPQ':[8721,8683]},index=['R1','R2'])
+
+        # plotting
+        Utils.touchtime("Plotting ...")
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+        sns.set_context('poster')
+        sns.set_style('ticks')
+        fig = plt.figure(figsize=[10,10])
+        ax1 = plt.subplot2grid((20,10),(0,0),rowspan=10,colspan=4)
+        ax2 = plt.subplot2grid((20,10),(0,6),rowspan=10,colspan=4)
+        ax3 = plt.subplot2grid((20,10),(10,0),rowspan=3,colspan=10)
+        ax4 = plt.subplot2grid((20,10),(15,0),rowspan=4,colspan=10)
+        
+        # read barplot
+        Plot.ReadsBarPlot(mdf,ax1)
+
+        # pie chart
+        Plot.BaitCountPie([self_cnt,intra_cnt,inter_cnt],['Self-','Intra-','Inter-'],ax2)
+
+        # bait count plot
+        Plot.BaitCountPlot(sdepth,counts,ax3)
+
+        # bait barplot
+        Plot.BaitBarPlot(bait_links,bait_chrom,ax4)
+        
+        # save figure
+        Utils.touchtime("Saving figure to {0} ...".format(outfile))
+        plt.savefig(outfile)
+        plt.close(fig)
+    def GetIntraChromLinks(self,outfile=None,nbins=11,nperm=1000,seed=1024): 
+        '''
+        Get all local links from the provided region. 
+        Get counts from the bait region to flanking N bins. The left and right bins with the same \
+        distance to the bait region are merged.
+        Parameters:
+            outfile: string or None
+                Save the count of intra-chromosome links.
+            nbins: int
+                Number of bins. The binsize is same as the bait peak size.
+            nperm: int
+                Number of permutations.
+            seed: int
+                random seed.
+        '''
+        chrom, size = self.bait_chrom, self.sizes[self.chroms.index(self.bait_chrom)]
+        peaksize = self.peaksize
+        left, right = self.left-peaksize/2, self.right-peaksize/2
+        
+        # permutation
         counts = []
-        nbins = 2*flanking_bins+1
-        for chrom, mid in Algorithms.RandomGenomicLoci(self.chroms,self.sizes,nbins*binsize,nperm,seed):
-            start, end = mid - nbins*binsize/2, mid + nbins*binsize/2
-            count = numpy.zeros(nbins,dtype=numpy.uint16)
-            for item in self.fh.fetch(reference=chrom,start=mid-binsize/2,end=mid+binsize/2):
-                items = item.split()
-                pos, ochrom, opos = int(items[1]), items[2], int(items[3])
-                # check intra-chrom interactions
-                if ochrom==chrom and start <= opos < end:
-                    count[(opos-start)/binsize] += 1
-            counts.append(count)
-        return counts
-    def GetInterChromLinks(self,binsize=1000000,nperm=1000,seed=1024):
+        binsize = nbins*peaksize
+        rs = numpy.random.RandomState(seed=seed)
+        pcnt = 0
+        starts = []
+        while pcnt < nperm:
+            start = rs.randint(0,size-binsize)
+            end   = start + binsize
+            mid = (start+end)/2
+            if end < left or start > right:
+                count = numpy.zeros(nbins,dtype=numpy.uint16)
+                for item in self.fh.fetch(reference=chrom,start=start,end=end):
+                    items = item.split()
+                    pos, ochrom, opos = int(items[1]), items[2], int(items[3])
+                    # check intra-chrom interactions
+                    if ochrom==chrom and not start<opos<end: # same chrom
+                        idx = min(abs(opos-start), abs(opos-end))/peaksize
+                        if idx < nbins:
+                            count[idx] += 1
+                starts.append(start)
+                counts.append(count)
+                pcnt += 1
+                if pcnt %1000 == 0:
+                    Utils.touchtime("{0} permutations processed ...".format(pcnt))
+        if nperm%1000:
+            Utils.touchtime("{0} permutations processed ...     ".format(nperm))
+        cdf = pandas.DataFrame(counts,columns=["bin_{0}".format(i+1) for i in range(nbins)])
+        ns, ps = zip(*cdf.apply(Algorithms.NBFit,axis=0))
+        if outfile:
+            cdf['starts'] = starts
+            cdf.to_csv(outfile,sep='\t',index=None)
+        return ns, ps
+    def GetInterChromLinks(self,outfile=None,binsize=1000000,nperm=1000,seed=1024):
         '''
         Get links between two chromosomal regions.
+        Parameters:
+            outfile: string
+                file to save the permutation results
+            binszie: int
+                binsize to count links
+            nperm: int
+                number of permutations
+            seed: int 
+                seed
+        Returns:
+            inter_counts: numpy.array
+                counts of inter-chrom links.
         '''
-        counts = numpy.zeros(nperm,dtype=numpy.uint16)
-        locus = Algorithms.RandomGenomicLoci(self.chroms,self.sizes,binsize,4*nperm,seed)
-        for i in range(nperm):
-            chrom, mid = locus.next()
-            while True:
-                tchrom, tmid = locus.next()
-                if tchrom != chrom:
-                    break
-            start, end = tmid-binsize/2, tmid+binsize/2
-            for item in self.fh.fetch(reference=chrom,start=mid-binsize/2,end=mid+binsize/2):
-                items = item.split()
-                pos, ochrom, opos = int(items[1]), items[2], int(items[3])
-                if ochrom==chrom and start <= opos < end:
-                    counts[i] += 1
-        return counts
+        inter_counts = numpy.zeros(nperm,dtype=numpy.uint16)
+        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if chrom!=self.bait_chrom and size>binsize])
+        cumsizes = (numpy.array(sizes)-binsize).cumsum()
+        bait_size = self.sizes[self.chroms.index(self.bait_chrom)]
+
+        from bisect import bisect_left
+        rs = numpy.random.RandomState(seed=seed)
+        pcnt = 0
+        while pcnt < nperm:
+            # fetch bait_chrom random locus
+            start = rs.randint(0,bait_size-binsize)
+            end   = start + binsize
+            if end < self.left or start > self.right:
+                # fetch other chrom random locus
+                pos = rs.randint(0,cumsizes[-1])
+                idx = bisect_left(cumsizes,pos)
+                ochrom, ostart, oend = chroms[idx], cumsizes[idx]-pos, cumsizes[idx]-pos+binsize
+                for item in self.fh.fetch(reference=self.bait_chrom,start=start,end=end):
+                    items = item.split()
+                    pchrom, ppos = items[2], int(items[3])
+                    # check inter-chrom interactions                
+                    if ochrom==pchrom and ostart <= ppos < oend:
+                        inter_counts[pcnt] += 1
+                pcnt += 1
+                if pcnt %1000 == 0:
+                    Utils.touchtime("{0} permutations processed ...".format(pcnt))
+        if nperm%1000:
+            Utils.touchtime("{0} permutations processed ...     ".format(nperm))
+        if outfile:
+            numpy.savetxt(outfile,inter_counts,fmt="%d")
+        # NB fit
+        n, p = Algorithms.NBFit(inter_counts)
+        return n, p
 
 class IO(object):
     def mopen(infile,mode='r'):
@@ -383,96 +543,19 @@ class Algorithms(object):
             mapped_reads = total_reads - int(lines[2].split()[0])
         return total_reads, mapped_reads
     ReadStats=staticmethod(ReadStats)
-        
+    def NBFit(obs):
+        '''
+        '''
+        df = pandas.Series(obs).value_counts()
+        y, X = list(df.values), list(df.index)
+        # fit by NB model
+        mod = NBin(y,X)
+        res = mod.fit()
+        p, n = res.params
+        return n, p
+    NBFit=staticmethod(NBFit)
+
 class Plot(object):
-    def BaitStatsPlot(tbffile,bait,outfile,extendsize=100000,readlen=36,smooth_window=100):
-        '''
-        '''
-        # Initiation
-        Utils.touchtime("Initialize tabix file ...")
-        bait_chrom,bait_pos = bait.split(':')
-        bait_pos = int(bait_pos)
-        tbf = TabixFile(tbffile)
-        with pysam.Samfile(tbffile.replace(".pairs.gz","_R1.bam")) as sam:
-            tbf.setChromSizes(sam.references,sam.lengths)
-        Utils.touchtime("Calculate peak region ...")
-        targets = {chrom:[] for chrom in tbf.chroms}
-        start, end = bait_pos-extendsize, bait_pos+extendsize
-        depth = numpy.zeros(end-start)
-        for item in tbf.fh.fetch(reference=bait_chrom,start=start,end=end):
-            items = item.split()
-            pos, ochrom, opos = int(items[1]), items[2], int(items[3])
-            targets[ochrom].append(opos)
-            tstart = int(item.split()[1]) - start
-            tend = min(tstart+readlen,end-start)
-            depth[tstart:tend] += 1
-        # calculate the peaksize
-        left, right = Algorithms.DeterminePeakSize(depth,smooth_window)
-        sdepth = depth[left:right]
-        Utils.touchtime("Peak size inferred from the bait region: {0}".format(right-left))
-        left, right = left+start, right+start
-
-        # count number of links
-        Utils.touchtime("Count bait related links ...")
-        counts = [0] *6
-        self_cnt = 0
-        mid = (left+right)/2
-        for pos in targets[bait_chrom]:
-            pos -= mid
-            if   pos < -1000000:
-                counts[0] += 1
-            elif pos < -100000:
-                counts[1] += 1
-            elif pos < left-mid:
-                counts[2] += 1
-            elif pos < right-mid:
-                self_cnt += 1
-            elif pos < 100000:
-                counts[3] += 1
-            elif pos < 1000000:
-                counts[4] += 1
-            else:
-                counts[5] += 1
-        intra_cnt = sum(counts)
-        chroms = sorted(targets,key=Utils.naturalkeys) 
-        bait_links = pandas.DataFrame({'cnt':[len(targets[chrom]) for chrom in chroms],'chrom':chroms})
-        bait_links.loc[bait_links.chrom==bait_chrom,'cnt'] = intra_cnt
-        inter_cnt = bait_links.loc[bait_links.chrom!=bait_chrom,'cnt'].sum()
-
-        # reads statistics
-        Utils.touchtime("Parse read mapping rates and qualities ...")
-        mdf = pandas.DataFrame({'Unmapped':[226,501],'Low MAPQ':[1056,816],'High MAPQ':[8721,8683]},index=['R1','R2'])
-
-        # plotting
-        Utils.touchtime("Plotting ...")
-        import seaborn as sns
-        import matplotlib.pyplot as plt
-        sns.set_context('poster')
-        sns.set_style('ticks')
-        fig = plt.figure(figsize=[10,10])
-        ax1 = plt.subplot2grid((20,10),(0,0),rowspan=10,colspan=4)
-        ax2 = plt.subplot2grid((20,10),(0,5),rowspan=10,colspan=5)
-        ax3 = plt.subplot2grid((20,10),(10,0),rowspan=3,colspan=10)
-        ax4 = plt.subplot2grid((20,10),(15,0),rowspan=4,colspan=10)
-        
-        # read barplot
-        Plot.ReadsBarPlot(mdf,ax1)
-
-        # pie chart
-        Plot.BaitCountPie([self_cnt,intra_cnt,inter_cnt],['Self-','Intra-','Inter-'],ax2)
-
-        # bait count plot
-        Plot.BaitCountPlot(sdepth,counts,ax3)
-
-        # bait barplot
-        Plot.BaitBarPlot(bait_links,bait_chrom,ax4)
-        
-        # save figure
-        Utils.touchtime("Saving figure to {0} ...".format(outfile))
-        plt.savefig(outfile)
-        plt.close(fig)
-        return sdepth.shape[0]
-    BaitStatsPlot=staticmethod(BaitStatsPlot)
     def ReadsBarPlot(mdf,ax):
         '''
         '''
@@ -594,6 +677,7 @@ class Utils(object):
             except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
+        return os.path.abspath(wdir)+"/"
     touchdir=staticmethod(touchdir)
     def naturalkeys(text):
         '''
@@ -658,7 +742,48 @@ samtools sort -n {proc2} - -o {prefix}.bam 2>{prefix}_samtools.log
             os.remove(samfile)
         Utils.touchtime("Bowtie2 finishes ...")
     bowtie2_SE=staticmethod(bowtie2_SE)
- 
+
+class NBin(GenericLikelihoodModel):
+    '''
+    Estimate negative binomial parameters. Codes are modified from:
+    http://www.statsmodels.org/dev/examples/notebooks/generated/generic_mle.html
+    Usage:
+        # generate random observations
+        n, p = 5, 0.3
+        obs = nbinom.rvs(n,p,size=1000)
+        df = pandas.Series(obs).value_counts().sort_index()
+        y, X = list(df.values), list(df.index)
+        # fit by NB model
+        mod = NBin(y,X)
+        res = mod.fit()
+        p, n = res.params
+    '''
+    def __init__(self, endog, exog, **kwds):
+        super(NBin, self).__init__(endog, exog, **kwds)
+    def _ll_nb2(y, X, beta, alph):
+        mu = numpy.exp(numpy.dot(X, beta))
+        size = 1/alph
+        prob = size/(size+mu)
+        ll = nbinom.logpmf(y, size, prob)
+        return ll
+    _ll_nb2=staticmethod(_ll_nb2)        
+    def nloglikeobs(self, params):
+        alph = params[-1]
+        beta = params[:-1]
+        ll = NBin._ll_nb2(self.endog, self.exog, beta, alph)
+        return -ll     
+    def fit(self, start_params=None, maxiter=10000, maxfun=5000, disp=0, **kwds):
+        # we have one additional parameter and we need to add it for summary
+        self.exog_names.append('alpha')
+        if start_params == None:
+            # Reasonable starting values
+            start_params = numpy.append(numpy.zeros(self.exog.shape[1]), .5)
+            # intercept
+            start_params[-2] = numpy.log(self.endog.mean())
+        return super(NBin, self).fit(start_params=start_params, 
+                                     maxiter=maxiter, maxfun=maxfun, 
+                                     disp=disp, **kwds) 
+
 # ------------------------------------
 # Main
 # ------------------------------------
