@@ -1,5 +1,5 @@
 #!/usr/bin/python
-#Last-modified: 08 Sep 2017 11:29:13 AM
+#Last-modified: 25 Sep 2017 05:24:10 PM
 
 #         Module/Scripts Description
 # 
@@ -68,16 +68,14 @@ if __name__ == '__main__':
                              "matplotlib >= 2.0.2",
                              "seaborn >= 0.7.1",
                              "pysam >= 0.11.2.2",
-                             "scipy >= 0.19.1",
-                             "statsmodels >= 0.8.0"])
-
+                             "scipy >= 0.19.1"])
     setup(name=PROG,
           version=VERSION,
           author='Yunfei Wang',
           author_email='yfwang0405@gmail.com',
           url='https://github.com/tsznxx/{0}'.format(PROG),
           license="GNU General Public License (GPL)",
-          keywords = "Python NGS plot",
+          keywords = "C3S",
           description = (description),
           long_description = long_description,
           package_dir={PROG:'src'},

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 12 Sep 2017 10:25:14 AM
+# Last-modified: 25 Sep 2017 05:07:22 PM
 #
 #         Module/Scripts Description
 # 
@@ -59,7 +59,6 @@ def argParser():
         sys.exit(p.print_help())
     args = p.parse_args()
     return args
-
 
 # ------------------------------------
 # Classes
@@ -127,6 +126,12 @@ if __name__=="__main__":
     c3s.Utils.touchtime("Permutation on inter-chromosomal interactions ...")
     n, p = tbf.GetInterChromLinks(outfile=modeldir+"inter_counts.tsv",nperm=args.nperm)
     print n, p
+    c3s.Utils.touchtime()
+
+    # Calculate p values for intra- and inter-chrom interactions.
+    c3s.Utils.touchtime("Calculate p values ...")
+    tbf.InferBaitPval(modeldir+args.prefix)
+    c3s.Utils.touchtime()
 
 
 

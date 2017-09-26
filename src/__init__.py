@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 12 Sep 2017 10:04:55 AM
+# Last-modified: 26 Sep 2017 08:27:57 AM
 #
 #         Module/Scripts Description
 # 
@@ -32,8 +32,8 @@ import numpy
 import pysam
 import pandas
 import matplotlib
-from scipy.stats import nbinom
-from statsmodels.base.model import GenericLikelihoodModel
+from scipy import stats
+import statsmodels.api as sm
 
 # ------------------------------------
 # constants
@@ -223,7 +223,7 @@ class TabixFile(object):
         counts = []
         binsize = nbins*peaksize
         rs = numpy.random.RandomState(seed=seed)
-        pcnt = 0
+        pcnt, pcnt2 = 0, 0
         starts = []
         while pcnt < nperm:
             start = rs.randint(0,size-binsize)
@@ -231,7 +231,9 @@ class TabixFile(object):
             mid = (start+end)/2
             if end < left or start > right:
                 count = numpy.zeros(nbins,dtype=numpy.uint16)
+                tcnt = 0
                 for item in self.fh.fetch(reference=chrom,start=start,end=end):
+                    tcnt += 1
                     items = item.split()
                     pos, ochrom, opos = int(items[1]), items[2], int(items[3])
                     # check intra-chrom interactions
@@ -239,18 +241,23 @@ class TabixFile(object):
                         idx = min(abs(opos-start), abs(opos-end))/peaksize
                         if idx < nbins:
                             count[idx] += 1
-                starts.append(start)
-                counts.append(count)
-                pcnt += 1
-                if pcnt %1000 == 0:
-                    Utils.touchtime("{0} permutations processed ...".format(pcnt))
-        if nperm%1000:
-            Utils.touchtime("{0} permutations processed ...     ".format(nperm))
+                # discard the ones with zero links
+                pcnt2 += 1
+                if sum(count)>0:
+                    starts.append(start)
+                    counts.append(count)
+                    pcnt += 1
+                    if pcnt %500 == 0:
+                        Utils.touchtime("{0} permutations processed ...".format(pcnt))
+        if pcnt%500:
+            Utils.touchtime("{0} permutations processed ...".format(pcnt))
+        Utils.touchtime("{0} regions visited ...     ".format(pcnt2))
         cdf = pandas.DataFrame(counts,columns=["bin_{0}".format(i+1) for i in range(nbins)])
         ns, ps = zip(*cdf.apply(Algorithms.NBFit,axis=0))
         if outfile:
             cdf['starts'] = starts
             cdf.to_csv(outfile,sep='\t',index=None)
+        self.intra_ns,self.intra_ps = ns, ps
         return ns, ps
     def GetInterChromLinks(self,outfile=None,binsize=1000000,nperm=1000,seed=1024):
         '''
@@ -285,22 +292,76 @@ class TabixFile(object):
                 pos = rs.randint(0,cumsizes[-1])
                 idx = bisect_left(cumsizes,pos)
                 ochrom, ostart, oend = chroms[idx], cumsizes[idx]-pos, cumsizes[idx]-pos+binsize
+                tcnt = 0
                 for item in self.fh.fetch(reference=self.bait_chrom,start=start,end=end):
+                    tcnt += 1
                     items = item.split()
                     pchrom, ppos = items[2], int(items[3])
                     # check inter-chrom interactions                
                     if ochrom==pchrom and ostart <= ppos < oend:
                         inter_counts[pcnt] += 1
-                pcnt += 1
-                if pcnt %1000 == 0:
-                    Utils.touchtime("{0} permutations processed ...".format(pcnt))
+                # discard zero-link regions
+                if tcnt>0:
+                    pcnt += 1
+                    if pcnt %500 == 0:
+                        Utils.touchtime("{0} permutations processed ...".format(pcnt))
+                else:
+                    inter_counts[pcnt] = 0
         if nperm%1000:
             Utils.touchtime("{0} permutations processed ...     ".format(nperm))
         if outfile:
             numpy.savetxt(outfile,inter_counts,fmt="%d")
         # NB fit
         n, p = Algorithms.NBFit(inter_counts)
+        self.inter_n, self.inter_p = n, p
         return n, p
+    def InferBaitPval(self,outprefix,binsize=1000000):
+        '''
+        '''
+        Utils.touchtime("count links from the bait region ...")
+        intra_counts = {}
+        inter_counts = { chrom:{} for chrom in self.chroms}
+        for item in self.fh.fetch(reference=self.bait_chrom,start=self.left,end=self.right):
+            items = item.split()
+            ochrom, opos = items[2], float(items[3])
+            if ochrom==self.bait_chrom: # intra
+                idx = 0
+                if opos < self.left:
+                    idx = int((opos-self.left)/self.peaksize) -1
+                elif opos > self.right:
+                    idx = int((opos-self.right)/self.peaksize) +1
+                if idx!=0:
+                    intra_counts.setdefault(idx,0)
+                    intra_counts[idx] += 1
+            else:
+                idx = int(opos/binsize)
+                inter_counts[ochrom].setdefault(idx,0)
+                inter_counts[ochrom][idx] += 1
+        # intra pvalues
+        Utils.touchtime("Calculate p values for intra-chrom interactions ...")
+        with open(outprefix+"_intra_pval.tsv",'w') as ofh:
+            print >>ofh, "chrom\tstart\tend\tpvalue\tBF"
+            for idx in sorted(intra_counts):
+                if idx <0:
+                    start = self.left + idx * self.peaksize
+                    end   = start + self.peaksize
+                else:
+                    end   = self.right + idx * self.peaksize
+                    start = end - self.peaksize
+                pidx = abs(idx)-1
+                pidx = 10 if pidx >10 else pidx
+                p = 1-stats.nbinom.cdf(intra_counts[idx],self.intra_ns[pidx],self.intra_ps[pidx])
+                print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}".format(self.bait_chrom,start,end,p,p/(1-p))
+        # inter pvalues
+        Utils.touchtime("Calculate p values for inter-chrom interactions ...")
+        with open(outprefix+"_inter_pval.tsv",'w') as ofh:
+            print >>ofh, "chrom\tstart\tend\tpvalue\tBF"
+            for chrom in sorted(inter_counts):
+                for idx in sorted(inter_counts[chrom]):
+                    start = idx*binsize
+                    end   = start+binsize
+                    p = 1-stats.nbinom.cdf(inter_counts[chrom][idx],self.inter_n,self.inter_p)
+                    print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}".format(chrom,start,end,p,p/(1-p))
 
 class IO(object):
     def mopen(infile,mode='r'):
@@ -543,16 +604,22 @@ class Algorithms(object):
             mapped_reads = total_reads - int(lines[2].split()[0])
         return total_reads, mapped_reads
     ReadStats=staticmethod(ReadStats)
-    def NBFit(obs):
+    def NBFit(cnts):
         '''
+        Negative Binomival fit. 
+        Parameters:
+            cnts: list or pandas.Series
+                list of counts
+        Returns:
+            size, prob: float
+                negative binomial parameters.
         '''
-        df = pandas.Series(obs).value_counts()
-        y, X = list(df.values), list(df.index)
-        # fit by NB model
-        mod = NBin(y,X)
-        res = mod.fit()
-        p, n = res.params
-        return n, p
+        y, x = list(cnts), numpy.ones(len(cnts))
+        res = sm.NegativeBinomial(y, x, loglike_method='nb1').fit(start_params=[0.1, 0.1])
+        mu, alpha = numpy.exp(res.params[0]), res.params[1]
+        size = mu/alpha
+        prob = size/(size+mu)
+        return size, prob
     NBFit=staticmethod(NBFit)
 
 class Plot(object):
@@ -742,47 +809,6 @@ samtools sort -n {proc2} - -o {prefix}.bam 2>{prefix}_samtools.log
             os.remove(samfile)
         Utils.touchtime("Bowtie2 finishes ...")
     bowtie2_SE=staticmethod(bowtie2_SE)
-
-class NBin(GenericLikelihoodModel):
-    '''
-    Estimate negative binomial parameters. Codes are modified from:
-    http://www.statsmodels.org/dev/examples/notebooks/generated/generic_mle.html
-    Usage:
-        # generate random observations
-        n, p = 5, 0.3
-        obs = nbinom.rvs(n,p,size=1000)
-        df = pandas.Series(obs).value_counts().sort_index()
-        y, X = list(df.values), list(df.index)
-        # fit by NB model
-        mod = NBin(y,X)
-        res = mod.fit()
-        p, n = res.params
-    '''
-    def __init__(self, endog, exog, **kwds):
-        super(NBin, self).__init__(endog, exog, **kwds)
-    def _ll_nb2(y, X, beta, alph):
-        mu = numpy.exp(numpy.dot(X, beta))
-        size = 1/alph
-        prob = size/(size+mu)
-        ll = nbinom.logpmf(y, size, prob)
-        return ll
-    _ll_nb2=staticmethod(_ll_nb2)        
-    def nloglikeobs(self, params):
-        alph = params[-1]
-        beta = params[:-1]
-        ll = NBin._ll_nb2(self.endog, self.exog, beta, alph)
-        return -ll     
-    def fit(self, start_params=None, maxiter=10000, maxfun=5000, disp=0, **kwds):
-        # we have one additional parameter and we need to add it for summary
-        self.exog_names.append('alpha')
-        if start_params == None:
-            # Reasonable starting values
-            start_params = numpy.append(numpy.zeros(self.exog.shape[1]), .5)
-            # intercept
-            start_params[-2] = numpy.log(self.endog.mean())
-        return super(NBin, self).fit(start_params=start_params, 
-                                     maxiter=maxiter, maxfun=maxfun, 
-                                     disp=disp, **kwds) 
 
 # ------------------------------------
 # Main
