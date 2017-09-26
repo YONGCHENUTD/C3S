@@ -1,5 +1,5 @@
 #!/usr/bin/python
-#Last-modified: 25 Sep 2017 05:24:10 PM
+#Last-modified: 26 Sep 2017 08:33:20 AM
 
 #         Module/Scripts Description
 # 
@@ -68,7 +68,8 @@ if __name__ == '__main__':
                              "matplotlib >= 2.0.2",
                              "seaborn >= 0.7.1",
                              "pysam >= 0.11.2.2",
-                             "scipy >= 0.19.1"])
+                             "scipy >= 0.19.1",
+                             "statsmodels >=0.8.0"])
     setup(name=PROG,
           version=VERSION,
           author='Yunfei Wang',
