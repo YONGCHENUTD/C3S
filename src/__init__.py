@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 07 Oct 2017 08:17:35 AM
+# Last-modified: 07 Oct 2017 08:30:36 AM
 #
 #         Module/Scripts Description
 # 
@@ -223,7 +223,7 @@ class TabixFile(object):
         counts = []
         binsize = nbins*peaksize
         rs = numpy.random.RandomState(seed=seed)
-        pcnt, pcnt2 = 0, 0
+        pcnt = 0
         starts = []
         while pcnt < nperm:
             start = rs.randint(0,size-binsize)
@@ -242,16 +242,13 @@ class TabixFile(object):
                         if idx < nbins:
                             count[idx] += 1
                 # discard the ones with zero links
-                pcnt2 += 1
-                if sum(count)>0:
-                    starts.append(start)
-                    counts.append(count)
-                    pcnt += 1
-                    if pcnt %500 == 0:
-                        Utils.touchtime("{0} permutations processed ...".format(pcnt))
+                starts.append(start)
+                counts.append(count)
+                pcnt += 1
+                if pcnt %500 == 0:
+                    Utils.touchtime("{0} permutations processed ...".format(pcnt))
         if pcnt%500:
             Utils.touchtime("{0} permutations processed ...".format(pcnt))
-        Utils.touchtime("{0} regions visited ...     ".format(pcnt2))
         cdf = pandas.DataFrame(counts,columns=["bin_{0}".format(i+1) for i in range(nbins)])
         ns, ps = zip(*cdf.apply(Algorithms.NBFit,axis=0))
         if outfile:
@@ -292,21 +289,16 @@ class TabixFile(object):
                 pos = rs.randint(0,cumsizes[-1])
                 idx = bisect_left(cumsizes,pos)
                 ochrom, ostart, oend = chroms[idx], cumsizes[idx]-pos, cumsizes[idx]-pos+binsize
-                tcnt = 0
                 for item in self.fh.fetch(reference=self.bait_chrom,start=start,end=end):
-                    tcnt += 1
                     items = item.split()
                     pchrom, ppos = items[2], int(items[3])
                     # check inter-chrom interactions                
                     if ochrom==pchrom and ostart <= ppos < oend:
                         inter_counts[pcnt] += 1
                 # discard zero-link regions
-                if tcnt>0:
-                    pcnt += 1
-                    if pcnt %500 == 0:
-                        Utils.touchtime("{0} permutations processed ...".format(pcnt))
-                else:
-                    inter_counts[pcnt] = 0
+                pcnt += 1
+                if pcnt %500 == 0:
+                    Utils.touchtime("{0} permutations processed ...".format(pcnt))
         if nperm%1000:
             Utils.touchtime("{0} permutations processed ...     ".format(nperm))
         if outfile:
