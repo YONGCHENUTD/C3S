@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 25 Sep 2017 05:07:22 PM
+# Last-modified: 03 Oct 2017 08:16:31 AM
 #
 #         Module/Scripts Description
 # 
@@ -37,7 +37,7 @@ import c3s
 
 def argParser():
     ''' Parse arguments. '''
-    p=argparse.ArgumentParser(description='Gene Set Enrichment Analysis. Implemented according to Subramanian, A., et al. (2005). "Gene set enrichment analysis: a knowledge-based approach for interpreting genome-wide expression profiles." Proc Natl Acad Sci U S A 102(43): 15545-15550.',add_help=False,epilog='dependency numpy, scipy, pandas')
+    p=argparse.ArgumentParser(description='C3S: model-based analysis and pipeline of dCas9 Capture-3C-Seq data.',add_help=False,epilog='dependency numpy, scipy, pandas, pysam, statsmodels')
 
     pr = p.add_argument_group('Required')
     pr.add_argument("-x","--genome",dest="genome",type=str,metavar="hg38", required=True, help="Bowtie2 built genome.")
@@ -47,12 +47,11 @@ def argParser():
 
     po = p.add_argument_group('Optional')
     po.add_argument("--bait",dest="bait",type=str,metavar="chr11:5305934",default="chr11:5305934",help="Bait genomic locus. [Default=\"chr11:5305934\"]")
-    po.add_argument("--extendsize",dest="extendsize",type=int,metavar="10000",default=100000,help="Length to be extended from bait regions. [Defaut=10000]")
+    po.add_argument("--extendsize",dest="extendsize",type=int,metavar="100000",default=100000,help="Length to be extended from bait regions. [Defaut=100000]")
     po.add_argument("--readlen",dest="readlen",type=int,metavar="36",default=36,help="Read length. [Default=36]")
     po.add_argument("--seed",dest="seed",type=int,metavar="1024",default=1024,help="Seed to generate random values. [Default=1024].")
-    po.add_argument("--smooth-window",dest="smooth_window",type=str,metavar="100",default=100,help="Smooth window for peak size inference. [Default=100].")
+    po.add_argument("--smooth-window",dest="smooth_window",type=int,metavar="100",default=100,help="Smooth window for peak size inference. [Default=100].")
     po.add_argument("--nperm",dest="nperm",type=int,metavar="5000",default=5000,help="Number of permutatons. [Default=5000].")
-#    po.add_argument("--max_gene",dest="maxgene",type=int,metavar="500",default=500,help="Maximum number of genes in gene set.")
     po.add_argument("-w",dest="wdir",type=str,metavar='"."',default=".",help="Working directory. [Default=\".\"].")
     po.add_argument("-p",dest='proc',type=int,metavar='10',default=10,help="Number of processes. [Default=10]")
     if len(sys.argv)==1:

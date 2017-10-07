@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 26 Sep 2017 08:27:57 AM
+# Last-modified: 07 Oct 2017 07:10:46 AM
 #
 #         Module/Scripts Description
 # 
@@ -140,6 +140,8 @@ class TabixFile(object):
         for item in self.fh.fetch(reference=bait_chrom,start=left,end=right):
             items = item.split()
             ochrom, opos = items[2], int(items[3])
+            if ochrom=='=':
+                ochrom = bait_chrom
             targets[ochrom].append(opos)
 
         # count number of links
@@ -237,7 +239,7 @@ class TabixFile(object):
                     items = item.split()
                     pos, ochrom, opos = int(items[1]), items[2], int(items[3])
                     # check intra-chrom interactions
-                    if ochrom==chrom and not start<opos<end: # same chrom
+                    if ochrom=='=' and not start<opos<end: # same chrom
                         idx = min(abs(opos-start), abs(opos-end))/peaksize
                         if idx < nbins:
                             count[idx] += 1
@@ -298,7 +300,7 @@ class TabixFile(object):
                     items = item.split()
                     pchrom, ppos = items[2], int(items[3])
                     # check inter-chrom interactions                
-                    if ochrom==pchrom and ostart <= ppos < oend:
+                    if ochrom=='=' and ostart <= ppos < oend:
                         inter_counts[pcnt] += 1
                 # discard zero-link regions
                 if tcnt>0:
@@ -324,6 +326,8 @@ class TabixFile(object):
         for item in self.fh.fetch(reference=self.bait_chrom,start=self.left,end=self.right):
             items = item.split()
             ochrom, opos = items[2], float(items[3])
+            if ochrom == '=':
+                ochrom = self.bait_chrom
             if ochrom==self.bait_chrom: # intra
                 idx = 0
                 if opos < self.left:
@@ -445,6 +449,22 @@ class Algorithms(object):
                 print >>ofh, fq
         Utils.touchtime("Read with GATC sites: {0} out {1} reads.".format(cnt,total))
     ParseGATCSites=staticmethod(ParseGATCSites)
+    def _RmDup3():
+        curchr, curpos = "","-1"
+        reads = set()
+        for line in sys.stdin:
+            if line[0] == '@':
+                continue
+            items = line.split('\t')
+            if items[2]!=curchr or items[3]!=curpos:
+                for read in reads:
+                    print "{0}\t{1}\t{2}".format(curchr,curpos,read)
+                curchr,curpos = items[2], items[3]
+                reads = set()
+            reads.add("{0}\t{1}".format(items[2] if items[6]=='=' else items[6],items[7]))
+        for read in reads:
+            print "{0}\t{1}\t{2}".format(curchr,curpos,read)
+    _RmDup3=staticmethod(_RmDup3)
     def _RmDup():
         '''
         Removed duplicate read pairs.
@@ -509,8 +529,8 @@ class Algorithms(object):
             # fix mate pairs
             # select paired reads
             # sort by coordinates and print in SAM format
-            # Remove duplicates, keep the left reads of the pairs
-            cmd = '''samtools merge -nf -h {0} - {1} |samtools fixmate -pr - - |samtools view -h -f 1|samtools sort -@ {2} -O SAM -T {3} -|python -c "import c3s;c3s.Algorithms._RmDup()" >{3}.pairs'''.format(bams[0]," ".join(bams), max(nproc-3,1), prefix)
+            # Remove duplicates
+            cmd = '''samtools merge -nf -h {0} - {1} |samtools fixmate -pr - - |samtools view -h -f 1 -|samtools sort -@ {2} -O SAM -T {3} -|python -c "import c3s;c3s.Algorithms._RmDup3()" >{3}.pairs'''.format(bams[0]," ".join(bams), max(nproc-3,1), prefix)
             Utils.touchtime(cmd)
             rc = call(cmd,shell=True)
             if rc != 0:
@@ -560,6 +580,8 @@ class Algorithms(object):
                 break
             winsum += depth[i] - start
             start = depth[i+smooth_window-1]
+        # save depth region
+        #numpy.savetxt("depth.txt",depth,fmt="%d")
         return left, right
     DeterminePeakSize=staticmethod(DeterminePeakSize)
     def RandomGenomicLoci(chroms,sizes,binsize=1000000, nloci=1000,seed=1024):
@@ -673,7 +695,7 @@ class Plot(object):
         ax.set_yticks([])
         tick_loci = [-4.5,-2.5,-0.5,0,0.5,2.5,4.5]
         ax.set_xticks(tick_loci)
-        ax.set_xticklabels(['-1M','-100K','','HS3','','100K','1M'])
+        ax.set_xticklabels(['-1M','-100K','','Bait','','100K','1M'])
 
         # counts
         counts_loci = [-5.5,-3.5,-1.5,1.5,3.5,5.5]
