@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 07 Oct 2017 07:10:46 AM
+# Last-modified: 07 Oct 2017 08:17:35 AM
 #
 #         Module/Scripts Description
 # 
@@ -140,8 +140,6 @@ class TabixFile(object):
         for item in self.fh.fetch(reference=bait_chrom,start=left,end=right):
             items = item.split()
             ochrom, opos = items[2], int(items[3])
-            if ochrom=='=':
-                ochrom = bait_chrom
             targets[ochrom].append(opos)
 
         # count number of links
@@ -239,7 +237,7 @@ class TabixFile(object):
                     items = item.split()
                     pos, ochrom, opos = int(items[1]), items[2], int(items[3])
                     # check intra-chrom interactions
-                    if ochrom=='=' and not start<opos<end: # same chrom
+                    if ochrom==chrom and not start<opos<end: # same chrom
                         idx = min(abs(opos-start), abs(opos-end))/peaksize
                         if idx < nbins:
                             count[idx] += 1
@@ -300,7 +298,7 @@ class TabixFile(object):
                     items = item.split()
                     pchrom, ppos = items[2], int(items[3])
                     # check inter-chrom interactions                
-                    if ochrom=='=' and ostart <= ppos < oend:
+                    if ochrom==pchrom and ostart <= ppos < oend:
                         inter_counts[pcnt] += 1
                 # discard zero-link regions
                 if tcnt>0:
@@ -326,8 +324,6 @@ class TabixFile(object):
         for item in self.fh.fetch(reference=self.bait_chrom,start=self.left,end=self.right):
             items = item.split()
             ochrom, opos = items[2], float(items[3])
-            if ochrom == '=':
-                ochrom = self.bait_chrom
             if ochrom==self.bait_chrom: # intra
                 idx = 0
                 if opos < self.left:
