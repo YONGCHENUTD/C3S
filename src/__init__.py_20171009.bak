@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 09 Oct 2017 11:19:36 PM
+# Last-modified: 07 Oct 2017 03:58:11 PM
 #
 #         Module/Scripts Description
 # 
@@ -209,7 +209,7 @@ class TabixFile(object):
             outfile: string or None
                 Save the count of intra-chromosome links.
             nbins: int
-                Number of bins in each of the flanking regions. The binsize is same as the bait peak size.
+                Number of bins. The binsize is same as the bait peak size.
             nperm: int
                 Number of permutations.
             seed: int
@@ -220,25 +220,26 @@ class TabixFile(object):
         left, right = self.left-peaksize/2, self.right-peaksize/2
         
         # permutation
-        counts,starts = [], []
-        binsize = (2*nbins+1)*peaksize
+        counts = []
+        binsize = nbins*peaksize
         rs = numpy.random.RandomState(seed=seed)
         pcnt = 0
+        starts = []
         while pcnt < nperm:
             start = rs.randint(0,size-binsize)
             end   = start + binsize
-            if end < left or start > right: # avoid overlapping with bait
-                count = numpy.zeros(2*nbins+1,dtype=numpy.uint16)
+            mid = (start+end)/2
+            if end < left or start > right:
+                count = numpy.zeros(nbins,dtype=numpy.uint16)
                 tcnt = 0
-                for item in self.fh.fetch(reference=chrom,start=start+nbins*peaksize,end=end-nbins*peaksize):
+                for item in self.fh.fetch(reference=chrom,start=start,end=end):
                     tcnt += 1
                     items = item.split()
                     pos, ochrom, opos = int(items[1]), items[2], int(items[3])
                     # check intra-chrom interactions
-                    if ochrom==chrom and start<=opos<end: # same chrom
-                        # idx = min(abs(opos-start), abs(opos-end))/peaksize
-                        idx = (opos-start)/peaksize
-                        if idx < 2*nbins+1:
+                    if ochrom==chrom and not start<opos<end: # same chrom
+                        idx = min(abs(opos-start), abs(opos-end))/peaksize
+                        if idx < nbins:
                             count[idx] += 1
                 # discard the ones with zero links
                 starts.append(start)
@@ -248,12 +249,12 @@ class TabixFile(object):
                     Utils.touchtime("{0} permutations processed ...".format(pcnt))
         if pcnt%500:
             Utils.touchtime("{0} permutations processed ...".format(pcnt))
-        cdf = pandas.DataFrame(counts,columns=["bin_{0}".format(i) for i in range(-nbins,nbins+1)])
-        cdf = cdf.drop('bin_0',axis=1) # remove bait peak
+        cdf = pandas.DataFrame(counts,columns=["bin_{0}".format(i+1) for i in range(nbins)])
         ns, ps = zip(*cdf.apply(Algorithms.NBFit,axis=0))
         if outfile:
+            cdf['starts'] = starts
             cdf.to_csv(outfile,sep='\t',index=None)
-        self.intra_nb = pandas.DataFrame({'r':ns,'p':ps},index=cdf.columns)
+        self.intra_ns,self.intra_ps = ns, ps
         return ns, ps
     def GetInterChromLinks(self,outfile=None,binsize=1000000,nperm=1000,seed=1024):
         '''
@@ -324,32 +325,29 @@ class TabixFile(object):
                 if idx!=0:
                     intra_counts.setdefault(idx,0)
                     intra_counts[idx] += 1
-            else: # inter
+            else:
                 idx = int(opos/binsize)
                 inter_counts[ochrom].setdefault(idx,0)
                 inter_counts[ochrom][idx] += 1
         # intra pvalues
         Utils.touchtime("Calculate p values for intra-chrom interactions ...")
-        nbins = self.intra_nb.shape[0]/2
         with open(outprefix+"_intra_pval.tsv",'w') as ofh:
-            print >>ofh, "chrom\tstart\tend\tcount\tpvalue\tBF"
+            print >>ofh, "chrom\tstart\tend\tpvalue\tBF"
             for idx in sorted(intra_counts):
-                cnt = intra_counts[idx]
                 if idx <0:
                     start = self.left + idx * self.peaksize
                     end   = start + self.peaksize
                 else:
                     end   = self.right + idx * self.peaksize
                     start = end - self.peaksize
-                idx = -nbins if idx <-nbins else idx
-                idx = nbins if idx >nbins else idx
-                pcname = 'bin_{0}'.format(idx)
-                p = 1-stats.nbinom.cdf(cnt,self.intra_nb.loc[pcname,'r'], self.intra_nb.loc[pcname,'p'])
-                print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.bait_chrom,start,end,cnt,p,(1-p)/p)
+                pidx = abs(idx)-1
+                pidx = 10 if pidx >10 else pidx
+                p = 1-stats.nbinom.cdf(intra_counts[idx],self.intra_ns[pidx],self.intra_ps[pidx])
+                print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.bait_chrom,start,end,intra_counts[idx],p,(1-p)/p)
         # inter pvalues
         Utils.touchtime("Calculate p values for inter-chrom interactions ...")
         with open(outprefix+"_inter_pval.tsv",'w') as ofh:
-            print >>ofh, "chrom\tstart\tend\tcount\tpvalue\tBF"
+            print >>ofh, "chrom\tstart\tend\tpvalue\tBF"
             for chrom in sorted(inter_counts):
                 for idx in sorted(inter_counts[chrom]):
                     start = idx*binsize
