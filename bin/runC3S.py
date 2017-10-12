@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 03 Oct 2017 08:16:31 AM
+# Last-modified: 11 Oct 2017 10:45:19 PM
 #
 #         Module/Scripts Description
 # 
@@ -77,9 +77,9 @@ if __name__=="__main__":
     # 1st round of mapping
     c3s.Utils.touchtime("FIRST ROUND OF MAPPING ...")
     c3s.Utils.touchtime("MAPPING READ 1 ...")
-    c3s.Tools.bowtie2_SE(args.genome,fq1,args.prefix+"_R1",proc=args.proc,wdir=mappingdir)
+    c3s.Tools.bowtie2_SE(args.genome,fq1,args.prefix+"_R1",proc=args.proc,wdir=mappingdir,min_qual=30)
     c3s.Utils.touchtime("MAPPING READ 2 ...")
-    c3s.Tools.bowtie2_SE(args.genome,fq2,args.prefix+"_R2",proc=args.proc,wdir=mappingdir)
+    c3s.Tools.bowtie2_SE(args.genome,fq2,args.prefix+"_R2",proc=args.proc,wdir=mappingdir,min_qual=30)
     c3s.Utils.touchtime()
 
     # Split the reads by GATC sites and take the larger one

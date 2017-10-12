@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 12 Oct 2017 08:56:45 AM
+# Last-modified: 11 Oct 2017 04:13:36 AM
 #
 #         Module/Scripts Description
 # 
@@ -215,41 +215,37 @@ class TabixFile(object):
             seed: int
                 random seed.
         '''
-        from bisect import bisect_left
-        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes)]) 
+        chrom, size = self.bait_chrom, self.sizes[self.chroms.index(self.bait_chrom)]
         peaksize = self.peaksize
+        left, right = self.left-peaksize/2, self.right-peaksize/2
         
         # permutation
         counts,starts = [], []
         binsize = (2*nbins+1)*peaksize
-        cumsizes = (numpy.array(sizes)-binsize).cumsum()
         rs = numpy.random.RandomState(seed=seed)
         pcnt = 0
         while pcnt < nperm:
-            #start = rs.randint(0,size-binsize)
-            #end   = start + binsize
-            pos = rs.randint(0,cumsizes[-1])
-            idx = bisect_left(cumsizes,pos)
-            chrom, start, end = chroms[idx], cumsizes[idx]-pos, cumsizes[idx]-pos+binsize
-            count = numpy.zeros(2*nbins+1,dtype=numpy.uint16)
-            tcnt = 0
-            for item in self.fh.fetch(reference=chrom,start=start+nbins*peaksize,end=end-nbins*peaksize):
-                tcnt += 1
-                items = item.split()
-                ochrom, opos = items[2], int(items[3])
-                # check intra-chrom interactions
-                if ochrom==chrom and start<=opos<end: # same chrom
-                    # idx = min(abs(opos-start), abs(opos-end))/peaksize
-                    idx = (opos-start)/peaksize
-                    if idx < 2*nbins+1:
-                        count[idx] += 1
-            # discard the ones with zero links
-            if tcnt:
+            start = rs.randint(0,size-binsize)
+            end   = start + binsize
+            if end < left or start > right: # avoid overlapping with bait
+                count = numpy.zeros(2*nbins+1,dtype=numpy.uint16)
+                tcnt = 0
+                for item in self.fh.fetch(reference=chrom,start=start+nbins*peaksize,end=end-nbins*peaksize):
+                    tcnt += 1
+                    items = item.split()
+                    pos, ochrom, opos = int(items[1]), items[2], int(items[3])
+                    # check intra-chrom interactions
+                    if ochrom==chrom and start<=opos<end: # same chrom
+                        # idx = min(abs(opos-start), abs(opos-end))/peaksize
+                        idx = (opos-start)/peaksize
+                        if idx < 2*nbins+1:
+                            count[idx] += 1
+                # discard the ones with zero links
                 starts.append(start)
                 counts.append(count)
                 pcnt += 1
-            if pcnt %500 == 0:
-                Utils.touchtime("{0} permutations processed ...".format(pcnt))
+                if pcnt %500 == 0:
+                    Utils.touchtime("{0} permutations processed ...".format(pcnt))
         if pcnt%500:
             Utils.touchtime("{0} permutations processed ...".format(pcnt))
         cdf = pandas.DataFrame(counts,columns=["bin_{0}".format(i) for i in range(-nbins,nbins+1)])
@@ -276,33 +272,32 @@ class TabixFile(object):
                 counts of inter-chrom links.
         '''
         inter_counts = numpy.zeros(nperm,dtype=numpy.uint16)
-        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if size>binsize])
+        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if chrom!=self.bait_chrom and size>binsize])
         cumsizes = (numpy.array(sizes)-binsize).cumsum()
+        bait_size = self.sizes[self.chroms.index(self.bait_chrom)]
 
         from bisect import bisect_left
         rs = numpy.random.RandomState(seed=seed)
         pcnt = 0
         while pcnt < nperm:
-            # fetch chrom random locus
-            pos = rs.randint(0,cumsizes[-1])
-            idx = bisect_left(cumsizes,pos)
-            chrom1, start1, end1 = chroms[idx], cumsizes[idx]-pos, cumsizes[idx]-pos+binsize
-            pos = rs.randint(0,cumsizes[-1])
-            idx2 = bisect_left(cumsizes,pos)
-            while idx2==idx:
+            # fetch bait_chrom random locus
+            start = rs.randint(0,bait_size-binsize)
+            end   = start + binsize
+            if end < self.left or start > self.right:
+                # fetch other chrom random locus
                 pos = rs.randint(0,cumsizes[-1])
-                idx2 = bisect_left(cumsizes,pos)
-            chrom2, start2, end2 = chroms[idx], cumsizes[idx]-pos, cumsizes[idx]-pos+binsize
-            for item in self.fh.fetch(reference=chrom1,start=start1,end=end1):
-                items = item.split()
-                pchrom, ppos = items[2], int(items[3])
-                # check inter-chrom interactions                
-                if chrom2==pchrom and start2 <= ppos < end2:
-                    inter_counts[pcnt] += 1
-            # discard zero-link regions
-            pcnt += 1
-            if pcnt %1000 == 0:
-                Utils.touchtime("{0} permutations processed ...".format(pcnt))
+                idx = bisect_left(cumsizes,pos)
+                ochrom, ostart, oend = chroms[idx], cumsizes[idx]-pos, cumsizes[idx]-pos+binsize
+                for item in self.fh.fetch(reference=self.bait_chrom,start=start,end=end):
+                    items = item.split()
+                    pchrom, ppos = items[2], int(items[3])
+                    # check inter-chrom interactions                
+                    if ochrom==pchrom and ostart <= ppos < oend:
+                        inter_counts[pcnt] += 1
+                # discard zero-link regions
+                pcnt += 1
+                if pcnt %500 == 0:
+                    Utils.touchtime("{0} permutations processed ...".format(pcnt))
         if nperm%1000:
             Utils.touchtime("{0} permutations processed ...     ".format(nperm))
         if outfile:
@@ -811,8 +806,9 @@ class Tools(object):
             proc2 = int(proc/3.)
             proc1 = proc - proc2
         cmd = '''bowtie2 -x {genome} -U {fqfile} --un-gz {prefix}_un.fastq.gz {proc1} 2>{prefix}_bowtie2.log |\
-samtools view -Sb {qual} -F 4 - |\
+samtools view -Sb {qual} -F 4 -q 30 - |\
 samtools sort -n {proc2} - -o {prefix}.bam 2>{prefix}_samtools.log
+samtools index {prefix}.bam
 '''.format(genome=genome,
            fqfile=fqfile, 
            prefix=prefix, 
