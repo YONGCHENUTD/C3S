@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 12 Oct 2017 08:56:45 AM
+# Last-modified: 12 Oct 2017 11:37:49 AM
 #
 #         Module/Scripts Description
 # 
@@ -216,7 +216,7 @@ class TabixFile(object):
                 random seed.
         '''
         from bisect import bisect_left
-        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes)]) 
+        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if '_' not in chrom]) 
         peaksize = self.peaksize
         
         # permutation
@@ -276,7 +276,7 @@ class TabixFile(object):
                 counts of inter-chrom links.
         '''
         inter_counts = numpy.zeros(nperm,dtype=numpy.uint16)
-        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if size>binsize])
+        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if '_' not in chrom and size>binsize])
         cumsizes = (numpy.array(sizes)-binsize).cumsum()
 
         from bisect import bisect_left
