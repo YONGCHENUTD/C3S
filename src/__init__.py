@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 13 Oct 2017 12:44:43 AM
+# Last-modified: 13 Oct 2017 11:31:46 AM
 #
 #         Module/Scripts Description
 # 
@@ -232,6 +232,8 @@ class TabixFile(object):
             pos = rs.randint(0,cumsizes[-1])
             idx = bisect_left(cumsizes,pos)
             chrom, start, end = chroms[idx], cumsizes[idx]-pos, cumsizes[idx]-pos+binsize
+            if chrom==self.bait_chrom and not (start >self.right or end <self.left):
+                continue
             count = numpy.zeros(2*nbins+1,dtype=numpy.uint16)
             tcnt = 0
             for item in self.fh.fetch(reference=chrom,start=start+nbins*peaksize,end=end-nbins*peaksize):
@@ -404,7 +406,7 @@ class TabixFile(object):
                 idx = nbins if idx >nbins else idx
                 pcname = 'bin_{0}'.format(abs(idx))
                 p = 1-stats.nbinom.cdf(cnt,self.intra_nb.loc[pcname,'r'], self.intra_nb.loc[pcname,'p'])
-                print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.bait_chrom,start,end,cnt,p,(1-p)/p/1000)
+                print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.bait_chrom,start,end,cnt,p,numpy.ceil((1-p)/p/1000))
         # inter pvalues
         Utils.touchtime("Calculate p values for inter-chrom interactions ...")
         with open(outprefix+"_inter_pval.tsv",'w') as ofh:
@@ -416,7 +418,7 @@ class TabixFile(object):
                     start = idx*binsize
                     end   = start+binsize
                     p = 1-stats.nbinom.cdf(inter_counts[chrom][idx],self.inter_ns[chrom],self.inter_ps[chrom])
-                    print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(chrom,start,end,inter_counts[chrom][idx],p,(1-p)/p/100)
+                    print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(chrom,start,end,inter_counts[chrom][idx],p,numpy.ceil((1-p)/p/100))
 
 class IO(object):
     def mopen(infile,mode='r'):

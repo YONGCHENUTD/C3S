@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 11 Oct 2017 10:45:19 PM
+# Last-modified: 13 Oct 2017 11:47:40 AM
 #
 #         Module/Scripts Description
 # 
@@ -120,11 +120,11 @@ if __name__=="__main__":
     modeldir = c3s.Utils.touchdir(modeldir)
     c3s.Utils.touchtime("Permutation on intra-chromosomal interactions ...")
     ns, ps = tbf.GetIntraChromLinks(outfile=modeldir+"intra_counts.tsv",nperm=args.nperm)
-    for n,p in zip(ns,ps):
-        print n,p
+    #for n,p in zip(ns,ps):
+    #    print n,p
     c3s.Utils.touchtime("Permutation on inter-chromosomal interactions ...")
     n, p = tbf.GetInterChromLinks(outfile=modeldir+"inter_counts.tsv",nperm=args.nperm)
-    print n, p
+    #print n, p
     c3s.Utils.touchtime()
 
     # Calculate p values for intra- and inter-chrom interactions.
