@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 13 Oct 2017 11:31:46 AM
+# Last-modified: 14 Oct 2017 05:37:48 AM
 #
 #         Module/Scripts Description
 # 
@@ -201,7 +201,7 @@ class TabixFile(object):
         Utils.touchtime("Saving figure to {0} ...".format(outfile))
         plt.savefig(outfile)
         plt.close(fig)
-    def GetIntraChromLinks(self,outfile=None,nbins=11,nperm=1000,seed=1024): 
+    def GetIntraChromLinks(self,outfile=None,nbins=11,nperm=10000,seed=1024): 
         '''
         Get all local links from the provided region. 
         Get counts from the bait region to flanking N bins. The left and right bins with the same \
@@ -257,6 +257,7 @@ class TabixFile(object):
             Utils.touchtime("{0} permutations processed ...".format(pcnt))
         cdf = pandas.DataFrame(counts,columns=["bin_{0}".format(i) for i in range(-nbins,nbins+1)])
         cdf = cdf.drop('bin_0',axis=1) # remove bait peak
+        Utils.touchtime("Negative Binomial fitting ...")
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             ns, ps = zip(*cdf.apply(Algorithms.NBFit,axis=0))
@@ -317,6 +318,57 @@ class TabixFile(object):
 #            n, p = Algorithms.NBFit(inter_counts)
 #        self.inter_n, self.inter_p = n, p
 #        return n, p
+#    def GetInterChromLinks(self,outfile=None,binsize=1000000,nperm=1000,seed=1024):
+#        '''
+#        Get links between two chromosomal regions.
+#        Parameters:
+#            outfile: string
+#                file to save the permutation results
+#            binszie: int
+#                binsize to count links
+#            nperm: int
+#                number of permutations
+#            seed: int 
+#                seed
+#        Returns:
+#            inter_counts: numpy.array
+#                counts of inter-chrom links.
+#        '''
+#        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if '_' not in chrom and chrom!=self.bait_chrom and size>binsize])
+#        inter_counts = {chrom:numpy.zeros(nperm,dtype=numpy.uint16) for chrom in chroms}
+#
+#        rs = numpy.random.RandomState(seed=seed)
+#        pcnt = 0
+#        left, right, baitsize = self.left, self.right, self.sizes[self.chroms.index(self.bait_chrom)]
+#        while pcnt < nperm:
+#            # fetch chrom random locus
+#            start1 = rs.randint(0,baitsize-binsize)
+#            end1 = start1 + binsize
+#            if not (start1>right or end1 <left):
+#                continue
+#            start2s = {chrom:rs.randint(0,size-binsize) for chrom,size in zip(chroms,sizes)}
+#            for item in self.fh.fetch(reference=self.bait_chrom,start=start1,end=end1):
+#                items = item.split()
+#                pchrom, ppos = items[2], int(items[3])
+#                # check inter-chrom interactions
+#                if pchrom in start2s and 0 <= ppos - start2s[pchrom]< binsize:
+#                    inter_counts[pchrom][pcnt] += 1
+#            pcnt += 1
+#            if pcnt %1000 == 0:
+#                Utils.touchtime("{0} permutations processed ...".format(pcnt))
+#        if nperm%1000:
+#            Utils.touchtime("{0} permutations processed ...     ".format(nperm))
+#        if outfile:
+#            pandas.DataFrame(inter_counts).to_csv(outfile,sep='\t',index=None)
+#        # NB fit
+#        ns, ps = {}, {}
+#        with warnings.catch_warnings():
+#            warnings.filterwarnings("ignore")
+#            for chrom in inter_counts:
+#                ns[chrom], ps[chrom] = Algorithms.NBFit(inter_counts[chrom])
+#        self.inter_ns, self.inter_ps = ns, ps
+#        return ns, ps
+
     def GetInterChromLinks(self,outfile=None,binsize=1000000,nperm=1000,seed=1024):
         '''
         Get links between two chromosomal regions.
@@ -333,8 +385,8 @@ class TabixFile(object):
             inter_counts: numpy.array
                 counts of inter-chrom links.
         '''
-        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if '_' not in chrom and chrom!=self.bait_chrom and size>binsize])
-        inter_counts = {chrom:numpy.zeros(nperm,dtype=numpy.uint16) for chrom in chroms}
+        chroms, sizes, nbins = zip(*[(chrom,size,size/binsize) for chrom,size in zip(self.chroms,self.sizes) if '_' not in chrom and chrom!=self.bait_chrom and size>binsize])
+        inter_counts = {chrom:numpy.zeros(nbin*nperm,dtype=numpy.uint16) for chrom,nbin in zip(chroms,nbins)}
 
         rs = numpy.random.RandomState(seed=seed)
         pcnt = 0
@@ -345,25 +397,29 @@ class TabixFile(object):
             end1 = start1 + binsize
             if not (start1>right or end1 <left):
                 continue
-            start2s = {chrom:rs.randint(0,size-binsize) for chrom,size in zip(chroms,sizes)}
+            chrom_counts = {chrom:numpy.zeros(nbin+1,dtype=numpy.uint16) for chrom,nbin in zip(chroms,nbins)}
             for item in self.fh.fetch(reference=self.bait_chrom,start=start1,end=end1):
                 items = item.split()
                 pchrom, ppos = items[2], int(items[3])
                 # check inter-chrom interactions
-                if pchrom in start2s and 0 <= ppos - start2s[pchrom]< binsize:
-                    inter_counts[pchrom][pcnt] += 1
+                if pchrom in chroms:
+                    chrom_counts[pchrom][ppos/binsize] += 1
+            for chrom,nbin in zip(chroms,nbins):
+                inter_counts[chrom][pcnt*nbin:pcnt*nbin+nbin] += chrom_counts[chrom][:-1]
             pcnt += 1
             if pcnt %1000 == 0:
                 Utils.touchtime("{0} permutations processed ...".format(pcnt))
         if nperm%1000:
             Utils.touchtime("{0} permutations processed ...     ".format(nperm))
-        if outfile:
-            pandas.DataFrame(inter_counts).to_csv(outfile,sep='\t',index=None)
+        #if outfile:
+            #pandas.DataFrame(inter_counts).to_csv(outfile,sep='\t',index=None)
         # NB fit
+        Utils.touchtime("Negative Binomial fitting ...")
         ns, ps = {}, {}
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             for chrom in inter_counts:
+                Utils.touchtime(chrom)
                 ns[chrom], ps[chrom] = Algorithms.NBFit(inter_counts[chrom])
         self.inter_ns, self.inter_ps = ns, ps
         return ns, ps
@@ -689,7 +745,7 @@ class Algorithms(object):
                 negative binomial parameters.
         '''
         y, x = list(cnts), numpy.ones(len(cnts))
-        res = sm.NegativeBinomial(y, x, loglike_method='nb1').fit(start_params=[0.1, 0.1],disp=False)
+        res = sm.NegativeBinomial(y, x, loglike_method='nb1').fit(start_params=[0.1, 0.1],disp=True)
         mu, alpha = numpy.exp(res.params[0]), res.params[1]
         size = mu/alpha
         prob = size/(size+mu)
