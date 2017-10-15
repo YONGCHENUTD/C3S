@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 14 Oct 2017 05:37:48 AM
+# Last-modified: 14 Oct 2017 10:48:41 PM
 #
 #         Module/Scripts Description
 # 
@@ -109,6 +109,14 @@ class TabixFile(object):
         '''
         with pysam.Samfile(bamfile) as sam:
             self.chroms, self.sizes = sam.references,sam.lengths
+            rlen = 0
+            for i in range(10):
+                try:
+                    read = sam.next()
+                    rlen = max(read.rlen,rlen)
+                except:
+                    pass
+            self.rlen = rlen
     def BaitStatsPlot(self,bait,outfile,extendsize=100000,readlen=36,smooth_window=100):
         '''
         '''
@@ -141,7 +149,8 @@ class TabixFile(object):
         for item in self.fh.fetch(reference=bait_chrom,start=left,end=right):
             items = item.split()
             ochrom, opos = items[2], int(items[3])
-            targets[ochrom].append(opos)
+            if not '_' in ochrom:
+                targets[ochrom].append(opos)
 
         # count number of links
         counts = [0] *6
@@ -318,57 +327,6 @@ class TabixFile(object):
 #            n, p = Algorithms.NBFit(inter_counts)
 #        self.inter_n, self.inter_p = n, p
 #        return n, p
-#    def GetInterChromLinks(self,outfile=None,binsize=1000000,nperm=1000,seed=1024):
-#        '''
-#        Get links between two chromosomal regions.
-#        Parameters:
-#            outfile: string
-#                file to save the permutation results
-#            binszie: int
-#                binsize to count links
-#            nperm: int
-#                number of permutations
-#            seed: int 
-#                seed
-#        Returns:
-#            inter_counts: numpy.array
-#                counts of inter-chrom links.
-#        '''
-#        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if '_' not in chrom and chrom!=self.bait_chrom and size>binsize])
-#        inter_counts = {chrom:numpy.zeros(nperm,dtype=numpy.uint16) for chrom in chroms}
-#
-#        rs = numpy.random.RandomState(seed=seed)
-#        pcnt = 0
-#        left, right, baitsize = self.left, self.right, self.sizes[self.chroms.index(self.bait_chrom)]
-#        while pcnt < nperm:
-#            # fetch chrom random locus
-#            start1 = rs.randint(0,baitsize-binsize)
-#            end1 = start1 + binsize
-#            if not (start1>right or end1 <left):
-#                continue
-#            start2s = {chrom:rs.randint(0,size-binsize) for chrom,size in zip(chroms,sizes)}
-#            for item in self.fh.fetch(reference=self.bait_chrom,start=start1,end=end1):
-#                items = item.split()
-#                pchrom, ppos = items[2], int(items[3])
-#                # check inter-chrom interactions
-#                if pchrom in start2s and 0 <= ppos - start2s[pchrom]< binsize:
-#                    inter_counts[pchrom][pcnt] += 1
-#            pcnt += 1
-#            if pcnt %1000 == 0:
-#                Utils.touchtime("{0} permutations processed ...".format(pcnt))
-#        if nperm%1000:
-#            Utils.touchtime("{0} permutations processed ...     ".format(nperm))
-#        if outfile:
-#            pandas.DataFrame(inter_counts).to_csv(outfile,sep='\t',index=None)
-#        # NB fit
-#        ns, ps = {}, {}
-#        with warnings.catch_warnings():
-#            warnings.filterwarnings("ignore")
-#            for chrom in inter_counts:
-#                ns[chrom], ps[chrom] = Algorithms.NBFit(inter_counts[chrom])
-#        self.inter_ns, self.inter_ps = ns, ps
-#        return ns, ps
-
     def GetInterChromLinks(self,outfile=None,binsize=1000000,nperm=1000,seed=1024):
         '''
         Get links between two chromosomal regions.
@@ -385,8 +343,8 @@ class TabixFile(object):
             inter_counts: numpy.array
                 counts of inter-chrom links.
         '''
-        chroms, sizes, nbins = zip(*[(chrom,size,size/binsize) for chrom,size in zip(self.chroms,self.sizes) if '_' not in chrom and chrom!=self.bait_chrom and size>binsize])
-        inter_counts = {chrom:numpy.zeros(nbin*nperm,dtype=numpy.uint16) for chrom,nbin in zip(chroms,nbins)}
+        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if '_' not in chrom and chrom!=self.bait_chrom and size>binsize])
+        inter_counts = {chrom:numpy.zeros(nperm,dtype=numpy.uint16) for chrom in chroms}
 
         rs = numpy.random.RandomState(seed=seed)
         pcnt = 0
@@ -397,29 +355,25 @@ class TabixFile(object):
             end1 = start1 + binsize
             if not (start1>right or end1 <left):
                 continue
-            chrom_counts = {chrom:numpy.zeros(nbin+1,dtype=numpy.uint16) for chrom,nbin in zip(chroms,nbins)}
+            start2s = {chrom:rs.randint(0,size-binsize) for chrom,size in zip(chroms,sizes)}
             for item in self.fh.fetch(reference=self.bait_chrom,start=start1,end=end1):
                 items = item.split()
                 pchrom, ppos = items[2], int(items[3])
                 # check inter-chrom interactions
-                if pchrom in chroms:
-                    chrom_counts[pchrom][ppos/binsize] += 1
-            for chrom,nbin in zip(chroms,nbins):
-                inter_counts[chrom][pcnt*nbin:pcnt*nbin+nbin] += chrom_counts[chrom][:-1]
+                if pchrom in start2s and 0 <= ppos - start2s[pchrom]< binsize:
+                    inter_counts[pchrom][pcnt] += 1
             pcnt += 1
             if pcnt %1000 == 0:
                 Utils.touchtime("{0} permutations processed ...".format(pcnt))
         if nperm%1000:
             Utils.touchtime("{0} permutations processed ...     ".format(nperm))
-        #if outfile:
-            #pandas.DataFrame(inter_counts).to_csv(outfile,sep='\t',index=None)
+        if outfile:
+            pandas.DataFrame(inter_counts).to_csv(outfile,sep='\t',index=None)
         # NB fit
-        Utils.touchtime("Negative Binomial fitting ...")
         ns, ps = {}, {}
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
             for chrom in inter_counts:
-                Utils.touchtime(chrom)
                 ns[chrom], ps[chrom] = Algorithms.NBFit(inter_counts[chrom])
         self.inter_ns, self.inter_ps = ns, ps
         return ns, ps
@@ -429,6 +383,7 @@ class TabixFile(object):
         Utils.touchtime("count links from the bait region ...")
         intra_counts = {}
         inter_counts = { chrom:{} for chrom in self.chroms}
+        read_pairs = []
         for item in self.fh.fetch(reference=self.bait_chrom,start=self.left,end=self.right):
             items = item.split()
             ochrom, opos = items[2], float(items[3])
@@ -436,8 +391,10 @@ class TabixFile(object):
                 idx = 0
                 if opos < self.left:
                     idx = int((opos-self.left)/self.peaksize) -1
+                    read_pairs.append(items+[idx])
                 elif opos > self.right:
                     idx = int((opos-self.right)/self.peaksize) +1
+                    read_pairs.append(items+[idx])
                 if idx!=0:
                     intra_counts.setdefault(idx,0)
                     intra_counts[idx] += 1
@@ -445,9 +402,11 @@ class TabixFile(object):
                 idx = int(opos/binsize)
                 inter_counts[ochrom].setdefault(idx,0)
                 inter_counts[ochrom][idx] += 1
+                read_pairs.append(items+[idx])
         # intra pvalues
         Utils.touchtime("Calculate p values for intra-chrom interactions ...")
         nbins = self.intra_nb.shape[0]/2
+        wuofh = open(outprefix+"_wu.bedpairs",'w')
         with open(outprefix+"_intra_pval.tsv",'w') as ofh:
             print >>ofh, "chrom\tstart\tend\tcount\tpvalue\tBF"
             for idx in sorted(intra_counts):
@@ -475,6 +434,16 @@ class TabixFile(object):
                     end   = start+binsize
                     p = 1-stats.nbinom.cdf(inter_counts[chrom][idx],self.inter_ns[chrom],self.inter_ps[chrom])
                     print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(chrom,start,end,inter_counts[chrom][idx],p,numpy.ceil((1-p)/p/100))
+        Utils.touchtime("Generate file for WashU browser ...")
+        with open(outprefix+"_wu.bedpairs",'w') as ofh:
+            for chr1,start1,chr2,start2,idx in read_pairs:
+                if chr1 == chr2 : # intra
+                    pcname = 'bin_{0}'.format(nbins if abs(idx) >nbins else abs(idx))
+                    p = 1-stats.nbinom.cdf(intra_counts[idx],self.intra_nb.loc[pcname,'r'], self.intra_nb.loc[pcname,'p'])
+                    print >>ofh, "{0}:{1}-{2}\t{3}:{4}-{5}\t{6:.0f}".format(chr1,start1,int(start1)+self.rlen,chr2,start2,int(start2)+self.rlen,min(150,numpy.ceil((1-p)/p/1000)))
+                elif chr2 in self.inter_ns: # inter
+                    p = 1-stats.nbinom.cdf(inter_counts[chr2][idx],self.inter_ns[chr2],self.inter_ps[chr2])
+                    print >>ofh, "{0}:{1}-{2}\t{3}:{4}-{5}\t{6:.0f}".format(chr1,start1,int(start1)+self.rlen,chr2,start2,int(start2)+self.rlen,-min(150,numpy.ceil((1-p)/p/100)))
 
 class IO(object):
     def mopen(infile,mode='r'):
@@ -776,19 +745,15 @@ class Plot(object):
         Pie chart of self-, intra- and inter-links.
         '''
         import matplotlib.pyplot as plt
-        def make_autopct(values):
-            def my_autopct(pct):
-                total = sum(values)
-                val = int(round(pct*total/100.0))
-                return '{p:.2f}% ({v:d})'.format(p=pct,v=val)
-            return my_autopct
-        patches, texts, _ = ax.pie(cnts, labels=labels,colors= ['whitesmoke', 'lightblue', 'lightskyblue'],autopct=make_autopct(cnts), shadow=False, startangle=60, labeldistance=0.8,pctdistance=0.45,textprops={'ha':'left'})
-        centre_circle = plt.Circle((0,0),0.75,color='black', fc='white',linewidth=1.25)
-        ax.add_artist(centre_circle)
-        ax.axis('equal')
-        #ax.set_ylim(-1,1)
-        #ax.set_xlim(-1,1)
-        #ax.legend(patches,labels,ncol=3,loc='upper center')
+        import seaborn as sns
+        with sns.plotting_context('paper'):
+            ax.pie(cnts, labels=None,colors= ['grey', 'blue', 'red'], shadow=False, startangle=60, labeldistance=0.8,pctdistance=0.45,textprops={'ha':'left'})
+            centre_circle = plt.Circle((0,0),0.75,color='black', fc='white',linewidth=1)
+            ax.add_artist(centre_circle)
+            ax.axis('equal')
+            scnts = sum(cnts)/100.
+            texts = ["{0} {1:.1f}% ({2})".format(l,c/scnts,c) for l,c in zip(labels,cnts)]
+            ax.legend(texts,loc='upper center',bbox_to_anchor=(0.5, 0.65))
         return ax
     BaitCountPie=staticmethod(BaitCountPie)
     def BaitCountPlot(sdepth,counts,ax):

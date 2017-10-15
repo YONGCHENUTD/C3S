@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 14 Oct 2017 06:10:56 AM
+# Last-modified: 14 Oct 2017 09:48:12 PM
 #
 #         Module/Scripts Description
 # 
@@ -51,7 +51,7 @@ def argParser():
     po.add_argument("--readlen",dest="readlen",type=int,metavar="36",default=36,help="Read length. [Default=36]")
     po.add_argument("--seed",dest="seed",type=int,metavar="1024",default=1024,help="Seed to generate random values. [Default=1024].")
     po.add_argument("--smooth-window",dest="smooth_window",type=int,metavar="100",default=100,help="Smooth window for peak size inference. [Default=100].")
-    #po.add_argument("--nperm",dest="nperm",type=int,metavar="5000",default=5000,help="Number of permutatons. [Default=5000].")
+    po.add_argument("--nperm",dest="nperm",type=int,metavar="5000",default=5000,help="Number of permutatons. [Default=5000].")
     po.add_argument("-w",dest="wdir",type=str,metavar='"."',default=".",help="Working directory. [Default=\".\"].")
     po.add_argument("-p",dest='proc',type=int,metavar='10',default=10,help="Number of processes. [Default=10]")
     if len(sys.argv)==1:
@@ -119,11 +119,11 @@ if __name__=="__main__":
     modeldir = args.wdir+"/030Model"
     modeldir = c3s.Utils.touchdir(modeldir)
     c3s.Utils.touchtime("Permutation on intra-chromosomal interactions ...")
-    ns, ps = tbf.GetIntraChromLinks(outfile=modeldir+"intra_counts.tsv")
+    ns, ps = tbf.GetIntraChromLinks(outfile=modeldir+"intra_counts.tsv",nperm=args.nperm)
     #for n,p in zip(ns,ps):
     #    print n,p
     c3s.Utils.touchtime("Permutation on inter-chromosomal interactions ...")
-    n, p = tbf.GetInterChromLinks(outfile=modeldir+"inter_counts.tsv")
+    n, p = tbf.GetInterChromLinks(outfile=modeldir+"inter_counts.tsv",nperm=args.nperm)
     #print n, p
     c3s.Utils.touchtime()
 
@@ -131,6 +131,9 @@ if __name__=="__main__":
     c3s.Utils.touchtime("Calculate p values ...")
     tbf.InferBaitPval(modeldir+args.prefix)
     c3s.Utils.touchtime()
+
+    # Ending
+    c3s.Utils.touchtime("RunC3S finished successfully. Thank you for using C3S!")
 
 
 
