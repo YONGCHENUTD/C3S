@@ -36,7 +36,7 @@ C3S: model-based analysis and pipeline of dCas9 Capture-3C-Seq data
 
   usage: runC3S.py -x hg38 -1 sample_R1.fastq.gz [sample_R1.fastq.gz ...] -2
                  sample_R2.fastq.gz [sample_R2.fastq.gz ...] --prefix prefix
-                 [--bait chr11:5305934] [--extendsize 10000] [--readlen 36]
+                 [--bait chr11:5305934] [--extendsize 100000] [--readlen 36]
                  [--seed 1024] [--smooth-window 100] [--nperm 10000] [-w "."]
                  [-p 10]
 
@@ -58,15 +58,15 @@ C3S: model-based analysis and pipeline of dCas9 Capture-3C-Seq data
 +--------------------------------------+--------------------------------------------------------------+
 |--bait chr11:5305934                  |Bait genomic locus. [Default="chr11:5305934"]                 |
 +--------------------------------------+--------------------------------------------------------------+
-|--extendsize 10000                    |Length to be extended from bait regions. [Defaut=10000].      |
+|--extendsize 100000                   |Length to be extended from bait regions. [Defaut=100000].     |
 +--------------------------------------+--------------------------------------------------------------+
 |--readlen 36                          |Read length. [Default=36]                                     |
 +--------------------------------------+--------------------------------------------------------------+
 |--seed 1024                           |Seed to generate random values. [Default=1024].               |
 +--------------------------------------+--------------------------------------------------------------+
-|-smooth-window 100                    |Smooth window for peak size inference. [Default=100].         |
+|-smooth-window 101                    |Smooth window for peak size inference. [Default=101].         |
 +--------------------------------------+--------------------------------------------------------------+
-|--nperm 10000                         |Number of permutatons. [Default=10000].                        |
+|--nperm 10000                         |Number of permutatons. [Default=10000].                       |
 +--------------------------------------+--------------------------------------------------------------+
 |-w "."                                |Working directory. [Default="."].                             |
 +--------------------------------------+--------------------------------------------------------------+
@@ -91,7 +91,7 @@ C3S: model-based analysis and pipeline of dCas9 Capture-3C-Seq data
   # run runC3S.py on fastq data
   > runC3S.py -x hg38_basic -1 K562_dCas9_sg3-HS1_3C-Capture_R1.fastq.gz \
   -2 K562_dCas9_sg3-HS1_3C-Capture_R2.fastq.gz --prefix sg3-HS1 -w sg3-HS1_raw \
-  --bait 'chr11:5226276' --nperm 10000
+  --bait 'chr11:5226276' 
 
 
 5. Interpretation of the results
