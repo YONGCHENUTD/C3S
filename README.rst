@@ -3,9 +3,8 @@ C3S: model-based analysis and pipeline of dCas9 Capture-3C-Seq data
 
 1. Prerequisition
 -------------------
-- Python packages (automatically installed)
+- Python 2.7 packages (automatically installed)
 
-  - Python 2.7
   - numpy >= 1.13.1
   - scipy >= 0.19.1
   - statsmodels >=0.8.0
