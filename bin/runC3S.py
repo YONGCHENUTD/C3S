@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 15 Oct 2017 10:37:22 PM
+# Last-modified: 15 Oct 2017 10:48:53 PM
 #
 #         Module/Scripts Description
 # 
@@ -51,7 +51,7 @@ def argParser():
     po.add_argument("--readlen",dest="readlen",type=int,metavar="36",default=36,help="Read length. [Default=36]")
     po.add_argument("--seed",dest="seed",type=int,metavar="1024",default=1024,help="Seed to generate random values. [Default=1024].")
     po.add_argument("--smooth-window",dest="smooth_window",type=int,metavar="100",default=100,help="Smooth window for peak size inference. [Default=100].")
-    po.add_argument("--nperm",dest="nperm",type=int,metavar="5000",default=5000,help="Number of permutatons. [Default=5000].")
+    po.add_argument("--nperm",dest="nperm",type=int,metavar="10000",default=10000,help="Number of permutatons. [Default=10000].")
     po.add_argument("-w",dest="wdir",type=str,metavar='"."',default=".",help="Working directory. [Default=\".\"].")
     po.add_argument("-p",dest='proc',type=int,metavar='10',default=10,help="Number of processes. [Default=10]")
     if len(sys.argv)==1:
