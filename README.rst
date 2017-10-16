@@ -37,7 +37,7 @@ C3S: model-based analysis and pipeline of dCas9 Capture-3C-Seq data
   usage: runC3S.py -x hg38 -1 sample_R1.fastq.gz [sample_R1.fastq.gz ...] -2
                  sample_R2.fastq.gz [sample_R2.fastq.gz ...] --prefix prefix
                  [--bait chr11:5305934] [--extendsize 10000] [--readlen 36]
-                 [--seed 1024] [--smooth-window 100] [--nperm 5000] [-w "."]
+                 [--seed 1024] [--smooth-window 100] [--nperm 10000] [-w "."]
                  [-p 10]
 
 - Required parameters:
