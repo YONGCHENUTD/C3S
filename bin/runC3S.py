@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 14 Oct 2017 09:48:12 PM
+# Last-modified: 15 Oct 2017 10:37:22 PM
 #
 #         Module/Scripts Description
 # 
-# Copyright (c) 2016 Yunfei Wang <yfwang0405@gmail.com>
+# Copyright (c) 2017 The Unversity of Texas at Dallas
 # 
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the BSD License (see the file COPYING included with
 # the distribution).
 # 
-# @status:  experimental
 # @version: 1.0.0
-# @author:  Yunfei Wang
-# @contact: yfwang0405@gmail.com
+# @design: Yong Chen <yongchen1@utdallas.edu>
+# @implementation: Yunfei Wang <yfwang0405@gmail.com>
+# @corresponding author:  Michael Q. Zhang <michael.zhang@utdallas.edu>
 
 # ------------------------------------
 # python modules
@@ -77,9 +77,9 @@ if __name__=="__main__":
     # 1st round of mapping
     c3s.Utils.touchtime("FIRST ROUND OF MAPPING ...")
     c3s.Utils.touchtime("MAPPING READ 1 ...")
-    c3s.Tools.bowtie2_SE(args.genome,fq1,args.prefix+"_R1",proc=args.proc,wdir=mappingdir,min_qual=30)
+    c3s.Algorithms.bowtie2_SE(args.genome,fq1,args.prefix+"_R1",proc=args.proc,wdir=mappingdir,min_qual=30)
     c3s.Utils.touchtime("MAPPING READ 2 ...")
-    c3s.Tools.bowtie2_SE(args.genome,fq2,args.prefix+"_R2",proc=args.proc,wdir=mappingdir,min_qual=30)
+    c3s.Algorithms.bowtie2_SE(args.genome,fq2,args.prefix+"_R2",proc=args.proc,wdir=mappingdir,min_qual=30)
     c3s.Utils.touchtime()
 
     # Split the reads by GATC sites and take the larger one
@@ -91,9 +91,9 @@ if __name__=="__main__":
     # 2nd round of mapping
     c3s.Utils.touchtime("SECOND ROUND OF MAPPING ...")
     c3s.Utils.touchtime("MAPPING READ 1 ...")
-    c3s.Tools.bowtie2_SE(args.genome,"{0}/{1}_R1_split.fastq.gz".format(mappingdir,args.prefix),args.prefix+"_R1_remap",min_qual=30,proc=args.proc,wdir=mappingdir)
+    c3s.Algorithms.bowtie2_SE(args.genome,"{0}/{1}_R1_split.fastq.gz".format(mappingdir,args.prefix),args.prefix+"_R1_remap",min_qual=30,proc=args.proc,wdir=mappingdir)
     c3s.Utils.touchtime("MAPPING READ 2 ...")
-    c3s.Tools.bowtie2_SE(args.genome,"{0}/{1}_R2_split.fastq.gz".format(mappingdir,args.prefix),args.prefix+"_R2_remap",min_qual=30,proc=args.proc,wdir=mappingdir)
+    c3s.Algorithms.bowtie2_SE(args.genome,"{0}/{1}_R2_split.fastq.gz".format(mappingdir,args.prefix),args.prefix+"_R2_remap",min_qual=30,proc=args.proc,wdir=mappingdir)
     c3s.Utils.touchtime()
 
     # Fix mate pairs
@@ -119,11 +119,12 @@ if __name__=="__main__":
     modeldir = args.wdir+"/030Model"
     modeldir = c3s.Utils.touchdir(modeldir)
     c3s.Utils.touchtime("Permutation on intra-chromosomal interactions ...")
-    ns, ps = tbf.GetIntraChromLinks(outfile=modeldir+"intra_counts.tsv",nperm=args.nperm)
+    ns, ps = tbf.GetIntraChromLinks(nperm=args.nperm)
     #for n,p in zip(ns,ps):
     #    print n,p
     c3s.Utils.touchtime("Permutation on inter-chromosomal interactions ...")
-    n, p = tbf.GetInterChromLinks(outfile=modeldir+"inter_counts.tsv",nperm=args.nperm)
+    n, p = tbf.GetInterChromLinks(nperm=args.nperm)
+    
     #print n, p
     c3s.Utils.touchtime()
 

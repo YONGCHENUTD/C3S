@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 14 Oct 2017 10:48:41 PM
+# Last-modified: 15 Oct 2017 10:37:01 PM
 #
 #         Module/Scripts Description
 # 
-# Copyright (c) 2016 Yunfei Wang <yfwang0405@gmail.com>
+# Copyright (c) 2017 The Unversity of Texas at Dallas
 # 
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the BSD License (see the file COPYING included with
 # the distribution).
 # 
-# @status:  experimental
 # @version: 1.0.0
-# @author:  Yunfei Wang
-# @contact: yfwang0405@gmail.com
+# @design: Yong Chen <yongchen1@utdallas.edu>
+# @implementation: Yunfei Wang <yfwang0405@gmail.com>
+# @corresponding author:  Michael Q. Zhang <michael.zhang@utdallas.edu>
 
 # ------------------------------------
 # python modules
@@ -26,7 +26,7 @@ import time
 import errno
 import copy
 import warnings
-from subprocess import call,PIPE
+from subprocess import call,Popen,PIPE,STDOUT
 
 # non-built-in packages
 import numpy
@@ -180,8 +180,12 @@ class TabixFile(object):
 
         # reads statistics
         Utils.touchtime("Parse read mapping rates and qualities ...")
-        mdf = pandas.DataFrame({'Unmapped':[226,501],'Low MAPQ':[1056,816],'High MAPQ':[8721,8683]},index=['R1','R2'])
-
+        unmapped1, low_qual1, high_qual1 = Algorithms.ReadStats(self.infile.replace(".pairs.gz","_R1"))
+        unmapped2, low_qual2, high_qual2 = Algorithms.ReadStats(self.infile.replace(".pairs.gz","_R2"))
+        mdf = pandas.DataFrame({'Unmapped':[unmapped1, unmapped2],
+                                'Low MAPQ':[low_qual1, low_qual2],
+                                'High MAPQ':[high_qual1, high_qual2]},index=['R1','R2'])
+        print mdf
         # plotting
         Utils.touchtime("Plotting ...")
         import seaborn as sns
@@ -327,7 +331,7 @@ class TabixFile(object):
 #            n, p = Algorithms.NBFit(inter_counts)
 #        self.inter_n, self.inter_p = n, p
 #        return n, p
-    def GetInterChromLinks(self,outfile=None,binsize=1000000,nperm=1000,seed=1024):
+    def GetInterChromLinks(self,outfile=None,binsize=1000000,nperm=10000,seed=1024):
         '''
         Get links between two chromosomal regions.
         Parameters:
@@ -403,37 +407,36 @@ class TabixFile(object):
                 inter_counts[ochrom].setdefault(idx,0)
                 inter_counts[ochrom][idx] += 1
                 read_pairs.append(items+[idx])
-        # intra pvalues
-        Utils.touchtime("Calculate p values for intra-chrom interactions ...")
         nbins = self.intra_nb.shape[0]/2
-        wuofh = open(outprefix+"_wu.bedpairs",'w')
-        with open(outprefix+"_intra_pval.tsv",'w') as ofh:
-            print >>ofh, "chrom\tstart\tend\tcount\tpvalue\tBF"
-            for idx in sorted(intra_counts):
-                cnt = intra_counts[idx]
-                if idx <0:
-                    start = self.left + idx * self.peaksize
-                    end   = start + self.peaksize
-                else:
-                    end   = self.right + idx * self.peaksize
-                    start = end - self.peaksize
-                idx = -nbins if idx <-nbins else idx
-                idx = nbins if idx >nbins else idx
-                pcname = 'bin_{0}'.format(abs(idx))
-                p = 1-stats.nbinom.cdf(cnt,self.intra_nb.loc[pcname,'r'], self.intra_nb.loc[pcname,'p'])
-                print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.bait_chrom,start,end,cnt,p,numpy.ceil((1-p)/p/1000))
-        # inter pvalues
-        Utils.touchtime("Calculate p values for inter-chrom interactions ...")
-        with open(outprefix+"_inter_pval.tsv",'w') as ofh:
-            print >>ofh, "chrom\tstart\tend\tcount\tpvalue\tBF"
-            for chrom in sorted(inter_counts):
-                if not chrom in self.inter_ns:
-                    continue
-                for idx in sorted(inter_counts[chrom]):
-                    start = idx*binsize
-                    end   = start+binsize
-                    p = 1-stats.nbinom.cdf(inter_counts[chrom][idx],self.inter_ns[chrom],self.inter_ps[chrom])
-                    print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(chrom,start,end,inter_counts[chrom][idx],p,numpy.ceil((1-p)/p/100))
+#        # intra pvalues
+#        Utils.touchtime("Calculate p values for intra-chrom interactions ...")
+#        with open(outprefix+"_intra_pval.tsv",'w') as ofh:
+#            print >>ofh, "chrom\tstart\tend\tcount\tpvalue\tBF"
+#            for idx in sorted(intra_counts):
+#                cnt = intra_counts[idx]
+#                if idx <0:
+#                    start = self.left + idx * self.peaksize
+#                    end   = start + self.peaksize
+#                else:
+#                    end   = self.right + idx * self.peaksize
+#                    start = end - self.peaksize
+#                idx = -nbins if idx <-nbins else idx
+#                idx = nbins if idx >nbins else idx
+#                pcname = 'bin_{0}'.format(abs(idx))
+#                p = 1-stats.nbinom.cdf(cnt,self.intra_nb.loc[pcname,'r'], self.intra_nb.loc[pcname,'p'])
+#                print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(self.bait_chrom,start,end,cnt,p,numpy.ceil((1-p)/p/1000))
+#        # inter pvalues
+#        Utils.touchtime("Calculate p values for inter-chrom interactions ...")
+#        with open(outprefix+"_inter_pval.tsv",'w') as ofh:
+#            print >>ofh, "chrom\tstart\tend\tcount\tpvalue\tBF"
+#            for chrom in sorted(inter_counts):
+#                if not chrom in self.inter_ns:
+#                    continue
+#                for idx in sorted(inter_counts[chrom]):
+#                    start = idx*binsize
+#                    end   = start+binsize
+#                    p = 1-stats.nbinom.cdf(inter_counts[chrom][idx],self.inter_ns[chrom],self.inter_ps[chrom])
+#                    print >>ofh, "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(chrom,start,end,inter_counts[chrom][idx],p,numpy.ceil((1-p)/p/100))
         Utils.touchtime("Generate file for WashU browser ...")
         with open(outprefix+"_wu.bedpairs",'w') as ofh:
             for chr1,start1,chr2,start2,idx in read_pairs:
@@ -501,6 +504,55 @@ class IO(object):
 class Algorithms(object):
     '''
     '''
+    def bowtie2_SE(genome, fqfile, prefix, proc=10, wdir=".", min_qual=0, overwrite=False):
+        '''
+        Bowtie version 2
+        cmd: 
+            >bowtie2 [options]* -x <bt2-idx> -U <r>} --un-gz <unmapped.fastq.gz |samtools view -Sb -q <min_qual> -F 4 - |samtools sort -n - -o <out.bam>
+        The mapped reads are sorted by name, so that it would be easier when find corresponding pairs later.
+        '''
+        Utils.touchtime("Checking tools and input files.")
+        Utils.cmdmustexist('bowtie2')
+        Utils.cmdmustexist('samtools')
+        Utils.touchtime("Starting bowtie2 ...")
+        
+        Utils.touchdir(wdir)
+        wdir += "/"
+        prefix = wdir+prefix
+        # check if samfile exists
+        samfile = prefix+".bam"
+        if os.path.isfile(samfile):
+            if overwrite:
+                os.remove(samfile)
+            else:
+                Utils.touchtime("Skipped: output file: {0} exists.".format(samfile))
+                return
+
+        # check if fastq file exists
+        Utils.mustexist(fqfile)
+        # check if genome exists
+        Utils.mustexist(genome+".1.bt2")
+
+        # run bowtie
+        if proc >1:
+            proc2 = int(proc/3.)
+            proc1 = proc - proc2
+        cmd = '''bowtie2 -x {genome} -U {fqfile} --un-gz {prefix}_un.fastq.gz {proc1} 2>{prefix}_bowtie2.log |\
+samtools view -Sb {qual} -F 4 - |\
+samtools sort -n {proc2} - -o {prefix}.bam 2>{prefix}_samtools.log
+samtools flagstat {prefix}.bam >{prefix}_flagstats.log
+'''.format(genome=genome,
+           fqfile=fqfile, 
+           prefix=prefix, 
+           proc1= "-p {0}".format(proc1) if proc1>1 else "",
+           proc2="-@ {0}".format(proc2) if proc2>1 else "",
+           qual= "-q {0}".format(min_qual) if min_qual else "")
+        Utils.touchtime("Running command: {0}".format(cmd.replace("\\\n","")).rstrip())
+        rc = call(cmd, shell=True)
+        if rc != 0:
+            os.remove(samfile)
+        Utils.touchtime("Bowtie2 finishes ...")
+    bowtie2_SE=staticmethod(bowtie2_SE)
     def ParseGATCSites(fqfile,outfile,overwrite=False):
         '''
         Parse GATC sites in unmapped reads. Split the reads into two parts, and keep the larger one.
@@ -690,18 +742,35 @@ class Algorithms(object):
             idx = bisect_left(cumsizes,pos)
             yield schroms[idx], cumsizes[idx]-pos+binsize/2
     RandomGenomicLoci=staticmethod(RandomGenomicLoci)
-    def ReadStats(logfile):
+    def ReadStats(prefix):
         '''
         Parse read mapping rates and mapping qualities.
+        Parameters:
+            prefix: string
+                prefix of log files
+        Returns:
+            unmapped, low_qual, high_qual: int
         '''
-        with open(logfile) as fh:
+        # map
+        with open(prefix+"_bowtie2.log") as fh:
             start = fh.tell()
             fh.seek(0,2) 
             fh.seek(max(start,fh.tell()-400)) 
             lines = fh.readlines()[-6:]
             total_reads = int(lines[0].split()[0])
             mapped_reads = total_reads - int(lines[2].split()[0])
-        return total_reads, mapped_reads
+        # remap
+        with open(prefix+"_remap_bowtie2.log") as fh:
+            start = fh.tell()
+            fh.seek(0,2) 
+            fh.seek(max(start,fh.tell()-400)) 
+            lines = fh.readlines()[-6:]
+            total_reads2 = int(lines[0].split()[0])
+            mapped_reads += total_reads2 - int(lines[2].split()[0])
+        # passed qc
+        with open(prefix+"_flagstat.log") as fh:
+            passqc = int(fh.next().split()[0])
+        return total_reads-mapped_reads, mapped_reads-passqc, passqc
     ReadStats=staticmethod(ReadStats)
     def NBFit(cnts):
         '''
@@ -745,15 +814,13 @@ class Plot(object):
         Pie chart of self-, intra- and inter-links.
         '''
         import matplotlib.pyplot as plt
-        import seaborn as sns
-        with sns.plotting_context('paper'):
-            ax.pie(cnts, labels=None,colors= ['grey', 'blue', 'red'], shadow=False, startangle=60, labeldistance=0.8,pctdistance=0.45,textprops={'ha':'left'})
-            centre_circle = plt.Circle((0,0),0.75,color='black', fc='white',linewidth=1)
-            ax.add_artist(centre_circle)
-            ax.axis('equal')
-            scnts = sum(cnts)/100.
-            texts = ["{0} {1:.1f}% ({2})".format(l,c/scnts,c) for l,c in zip(labels,cnts)]
-            ax.legend(texts,loc='upper center',bbox_to_anchor=(0.5, 0.65))
+        ax.pie(cnts, labels=None,colors= ['grey', 'blue', 'red'], shadow=False, startangle=60, labeldistance=0.8,pctdistance=0.45,textprops={'ha':'left'})
+        centre_circle = plt.Circle((0,0),0.75,color='black', fc='white',linewidth=1)
+        ax.add_artist(centre_circle)
+        ax.axis('equal')
+        scnts = sum(cnts)/100.
+        texts = ["{0} {1:.1f}% ({2})".format(l,c/scnts,c) for l,c in zip(labels,cnts)]
+        ax.legend(texts,loc='upper center',bbox_to_anchor=(0.5, 0.6),fontsize=12)
         return ax
     BaitCountPie=staticmethod(BaitCountPie)
     def BaitCountPlot(sdepth,counts,ax):
@@ -853,64 +920,7 @@ class Utils(object):
         return [ atoi(c) for c in re.split('(\d+)', text) ]
     naturalkeys=staticmethod(naturalkeys)
 
-class Tools(object):
-    '''
-    '''
-    def bowtie2_SE(genome, fqfile, prefix, proc=10, wdir=".", min_qual=0, overwrite=False):
-        '''
-        Bowtie version 2
-        cmd: 
-            >bowtie2 [options]* -x <bt2-idx> -U <r>} --un-gz <unmapped.fastq.gz |samtools view -Sb -q <min_qual> -F 4 - |samtools sort -n - -o <out.bam>
-        The mapped reads are sorted by name, so that it would be easier when find corresponding pairs later.
-        '''
-        Utils.touchtime("Checking tools and input files.")
-        Utils.cmdmustexist('bowtie2')
-        Utils.cmdmustexist('samtools')
-        Utils.touchtime("Starting bowtie2 ...")
-        
-        Utils.touchdir(wdir)
-        wdir += "/"
-        prefix = wdir+prefix
-        # check if samfile exists
-        samfile = prefix+".bam"
-        if os.path.isfile(samfile):
-            if overwrite:
-                os.remove(samfile)
-            else:
-                Utils.touchtime("Skipped: output file: {0} exists.".format(samfile))
-                return
-
-        # check if fastq file exists
-        Utils.mustexist(fqfile)
-        # check if genome exists
-        Utils.mustexist(genome+".1.bt2")
-
-        # run bowtie
-        if proc >1:
-            proc2 = int(proc/3.)
-            proc1 = proc - proc2
-        cmd = '''bowtie2 -x {genome} -U {fqfile} --un-gz {prefix}_un.fastq.gz {proc1} 2>{prefix}_bowtie2.log |\
-samtools view -Sb {qual} -F 4 - |\
-samtools sort -n {proc2} - -o {prefix}.bam 2>{prefix}_samtools.log
-'''.format(genome=genome,
-           fqfile=fqfile, 
-           prefix=prefix, 
-           proc1= "-p {0}".format(proc1) if proc1>1 else "",
-           proc2="-@ {0}".format(proc2) if proc2>1 else "",
-           qual= "-q {0}".format(min_qual) if min_qual else "")
-        Utils.touchtime("Running command: {0}".format(cmd.replace("\\\n","")).rstrip())
-        rc = call(cmd, shell=True)
-        if rc != 0:
-            os.remove(samfile)
-        Utils.touchtime("Bowtie2 finishes ...")
-    bowtie2_SE=staticmethod(bowtie2_SE)
-
 # ------------------------------------
 # Main
 # ------------------------------------
-
-if __name__=="__main__":
-    if len(sys.argv)==1:
-        sys.exit("Example:"+sys.argv[0]+" genome fqfile prefix ")
-    Tools.bowtie2_SE(sys.argv[1], sys.argv[2],sys.argv[3])
 
