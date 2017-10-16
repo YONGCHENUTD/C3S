@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 15 Oct 2017 10:42:57 PM
+# Last-modified: 15 Oct 2017 11:11:06 PM
 #
 #         Module/Scripts Description
 # 
@@ -277,59 +277,6 @@ class TabixFile(object):
             cdf.to_csv(outfile,sep='\t',index=None)
         self.intra_nb = pandas.DataFrame({'r':ns,'p':ps},index=cdf.columns)
         return ns, ps
-#    def GetInterChromLinks(self,outfile=None,binsize=1000000,nperm=1000,seed=1024):
-#        '''
-#        Get links between two chromosomal regions.
-#        Parameters:
-#            outfile: string
-#                file to save the permutation results
-#            binszie: int
-#                binsize to count links
-#            nperm: int
-#                number of permutations
-#            seed: int
-#                seed
-#        Returns:
-#            inter_counts: numpy.array
-#                counts of inter-chrom links.
-#        '''
-#        inter_counts = numpy.zeros(nperm,dtype=numpy.uint16)
-#        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if chrom!=self.bait_chrom and size>binsize])
-#        cumsizes = (numpy.array(sizes)-binsize).cumsum()
-#        bait_size = self.sizes[self.chroms.index(self.bait_chrom)]
-#
-#        from bisect import bisect_left
-#        rs = numpy.random.RandomState(seed=seed)
-#        pcnt = 0
-#        while pcnt < nperm:
-#            # fetch bait_chrom random locus
-#            start = rs.randint(0,bait_size-binsize)
-#            end   = start + binsize
-#            if end < self.left or start > self.right:
-#                # fetch other chrom random locus
-#                pos = rs.randint(0,cumsizes[-1])
-#                idx = bisect_left(cumsizes,pos)
-#                ochrom, ostart, oend = chroms[idx], cumsizes[idx]-pos, cumsizes[idx]-pos+binsize
-#                for item in self.fh.fetch(reference=self.bait_chrom,start=start,end=end):
-#                    items = item.split()
-#                    pchrom, ppos = items[2], int(items[3])
-#                    # check inter-chrom interactions
-#                    if ochrom==pchrom and ostart <= ppos < oend:
-#                        inter_counts[pcnt] += 1
-#                # discard zero-link regions
-#                pcnt += 1
-#                if pcnt %500 == 0:
-#                    Utils.touchtime("{0} permutations processed ...".format(pcnt))
-#        if nperm%1000:
-#            Utils.touchtime("{0} permutations processed ...     ".format(nperm))
-#        if outfile:
-#            numpy.savetxt(outfile,inter_counts,fmt="%d")
-#        # NB fit
-#        with warnings.catch_warnings():
-#            warnings.filterwarnings("ignore")
-#            n, p = Algorithms.NBFit(inter_counts)
-#        self.inter_n, self.inter_p = n, p
-#        return n, p
     def GetInterChromLinks(self,outfile=None,binsize=1000000,nperm=10000,seed=1024):
         '''
         Get links between two chromosomal regions.
