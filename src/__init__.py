@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 16 Oct 2017 09:41:30 AM
+# Last-modified: 16 Oct 2017 03:59:47 PM
 #
 #         Module/Scripts Description
 # 
@@ -108,7 +108,7 @@ class TabixFile(object):
         Set chromosome names and sizes.
         '''
         with pysam.Samfile(bamfile) as sam:
-            self.chroms, self.sizes = sam.references,sam.lengths
+            self.chroms, self.sizes = zip(*[(chrom,size) for chrom,size in zip(sam.references,sam.lengths) if '_' not in sam.references])
             rlen = 0
             for i in range(10):
                 try:
@@ -131,9 +131,10 @@ class TabixFile(object):
         for item in self.fh.fetch(reference=bait_chrom,start=start,end=end):
             items = item.split()
             pos, ochrom, opos = int(items[1]), items[2], int(items[3])
-            tstart = int(item.split()[1]) - start
-            tend = min(tstart+readlen,end-start)
-            depth[tstart:tend] += 1
+            if not '_' in ochrom:
+                tstart = int(item.split()[1]) - start
+                tend = min(tstart+readlen,end-start)
+                depth[tstart:tend] += 1
 
         # calculate the peaksize
         left, right = Algorithms.DeterminePeakSize(depth,smooth_window)
@@ -229,7 +230,7 @@ class TabixFile(object):
                 random seed.
         '''
         from bisect import bisect_left
-        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if '_' not in chrom]) 
+        chroms, sizes = self.chroms, self.sizes
         peaksize = self.peaksize
         
         # permutation
@@ -698,6 +699,7 @@ samtools flagstat {prefix}.bam >{prefix}_flagstat.log
             unmapped, low_qual, high_qual: int
         '''
         # map
+        print prefix
         with open(prefix+"_bowtie2.log") as fh:
             start = fh.tell()
             fh.seek(0,2) 
