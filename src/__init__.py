@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 15 Oct 2017 11:11:06 PM
+# Last-modified: 16 Oct 2017 09:41:30 AM
 #
 #         Module/Scripts Description
 # 
@@ -486,7 +486,7 @@ class Algorithms(object):
         cmd = '''bowtie2 -x {genome} -U {fqfile} --un-gz {prefix}_un.fastq.gz {proc1} 2>{prefix}_bowtie2.log |\
 samtools view -Sb {qual} -F 4 - |\
 samtools sort -n {proc2} - -o {prefix}.bam 2>{prefix}_samtools.log
-samtools flagstat {prefix}.bam >{prefix}_flagstats.log
+samtools flagstat {prefix}.bam >{prefix}_flagstat.log
 '''.format(genome=genome,
            fqfile=fqfile, 
            prefix=prefix, 
