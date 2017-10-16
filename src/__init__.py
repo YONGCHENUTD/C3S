@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 15 Oct 2017 10:37:01 PM
+# Last-modified: 15 Oct 2017 10:42:57 PM
 #
 #         Module/Scripts Description
 # 
@@ -185,7 +185,6 @@ class TabixFile(object):
         mdf = pandas.DataFrame({'Unmapped':[unmapped1, unmapped2],
                                 'Low MAPQ':[low_qual1, low_qual2],
                                 'High MAPQ':[high_qual1, high_qual2]},index=['R1','R2'])
-        print mdf
         # plotting
         Utils.touchtime("Plotting ...")
         import seaborn as sns
