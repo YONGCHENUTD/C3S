@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 16 Oct 2017 03:59:47 PM
+# Last-modified: 16 Oct 2017 05:39:37 PM
 #
 #         Module/Scripts Description
 # 
@@ -108,7 +108,7 @@ class TabixFile(object):
         Set chromosome names and sizes.
         '''
         with pysam.Samfile(bamfile) as sam:
-            self.chroms, self.sizes = zip(*[(chrom,size) for chrom,size in zip(sam.references,sam.lengths) if '_' not in sam.references])
+            self.chroms, self.sizes = sam.references, sam.lengths
             rlen = 0
             for i in range(10):
                 try:
@@ -131,10 +131,9 @@ class TabixFile(object):
         for item in self.fh.fetch(reference=bait_chrom,start=start,end=end):
             items = item.split()
             pos, ochrom, opos = int(items[1]), items[2], int(items[3])
-            if not '_' in ochrom:
-                tstart = int(item.split()[1]) - start
-                tend = min(tstart+readlen,end-start)
-                depth[tstart:tend] += 1
+            tstart = int(item.split()[1]) - start
+            tend = min(tstart+readlen,end-start)
+            depth[tstart:tend] += 1
 
         # calculate the peaksize
         left, right = Algorithms.DeterminePeakSize(depth,smooth_window)
@@ -150,8 +149,7 @@ class TabixFile(object):
         for item in self.fh.fetch(reference=bait_chrom,start=left,end=right):
             items = item.split()
             ochrom, opos = items[2], int(items[3])
-            if not '_' in ochrom:
-                targets[ochrom].append(opos)
+            targets[ochrom].append(opos)
 
         # count number of links
         counts = [0] *6
@@ -294,7 +292,7 @@ class TabixFile(object):
             inter_counts: numpy.array
                 counts of inter-chrom links.
         '''
-        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if '_' not in chrom and chrom!=self.bait_chrom and size>binsize])
+        chroms, sizes = zip(*[(chrom,size) for chrom,size in zip(self.chroms,self.sizes) if chrom!=self.bait_chrom and size>binsize])
         inter_counts = {chrom:numpy.zeros(nperm,dtype=numpy.uint16) for chrom in chroms}
 
         rs = numpy.random.RandomState(seed=seed)
@@ -533,6 +531,8 @@ samtools flagstat {prefix}.bam >{prefix}_flagstat.log
             if line[0] == '@':
                 continue
             items = line.split('\t')
+            if '_' in items[0] or '_' in items[2]: # skip non-basic chroms
+                continue
             if items[2]!=curchr or items[3]!=curpos:
                 for read in reads:
                     print "{0}\t{1}\t{2}".format(curchr,curpos,read)
