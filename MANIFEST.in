@@ -1,4 +1,4 @@
 include install.sh
-include RELEASE
 include LICENSE
+include RELEASE
 include README.rst
