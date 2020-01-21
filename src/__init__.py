@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 16 Oct 2017 05:39:37 PM
+# Last-modified: 16 Oct 2019 05:39:37 PM
 #
 #         Module/Scripts Description
 # 
-# Copyright (c) 2017 The Unversity of Texas at Dallas
+# Copyright (c) 2019 The Unversity of Texas at Dallas
 # 
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the BSD License (see the file COPYING included with
 # the distribution).
 # 
-# @version: 1.0.0
-# @design: Yong Chen <yongchen1@utdallas.edu>
+# @version: 1.1.0
+# @design: Yong Chen <yongchenutd@gmail.com>
 # @implementation: Yunfei Wang <yfwang0405@gmail.com>
 # @corresponding author:  Michael Q. Zhang <michael.zhang@utdallas.edu>
 
