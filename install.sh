@@ -1,16 +1,16 @@
 #!/bin/sh
-#Last-modified: 17 Jul 2017 11:02:25 AM
+#Last-modified: 17 Jul 2019 11:02:25 AM
 
 ####################### Module/Scripts Description ######################
 #  
-#  Copyright (c) 2008 Yunfei Wang <tszn1984@gmail.com>
+#  Copyright (c) 2018 Yunfei Wang <tszn1984@gmail.com>
 #  
 #  This code is free software; you can redistribute it and/or modify it
 #  under the terms of the BSD License (see the file COPYING included with
 #  the distribution).
 #  
 #  @status:  experimental
-#  @version: $Revision$
+#  @version: 1.1.0
 #  @author:  Yunfei Wang
 #  @contact: tszn1984@gmail.com
 #
