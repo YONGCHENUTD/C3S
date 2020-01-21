@@ -74,7 +74,7 @@ C3S: model-based analysis and pipeline of dCas9 Capture-3C-Seq data
 +--------------------------------------+--------------------------------------------------------------+
 
 
-4. Demo examples:
+4. Examples:
 -----------------
 
 ::
