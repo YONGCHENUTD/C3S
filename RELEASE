@@ -1,2 +1,4 @@
 c3s	1.1.0 release:
-	update with bug fixes.
+	Thanks anonymous reviewers helpful comments and suggestions, we updated CS3 with model improvemments and bug fixes.
+	The C3S pipeline work for CAPTURE-3C-seq data that the experimental method published at Cell, 2017.
+	Liu X, Zhang Y, Chen Y, et al. In Situ Capture of Chromatin Interactions by Biotinylated dCas9. Cell. 2017;170(5):1028‐1043.e19. doi:10.1016/j.cell.2017.08.003
