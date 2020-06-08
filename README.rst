@@ -96,5 +96,5 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
   --bait 'chr11:5226276' 
 
 
-5. Interpretation of the results
+5. Citations of C3S
 ----------------------------------
