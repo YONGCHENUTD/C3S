@@ -1,6 +1,6 @@
 **C3S: model-based analysis and pipeline of dCas9 Capture-3C-Seq data**
 
-C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu et.al Cell 2017). It uses multiplescale Bayesian models for the significance calling of chromatin interactions. It oprovides a versatile and flexible pipeline to analyze the dCas9 Capture-3C-Seq data from raw sequencing reads to chromatin loops. C3S integrates all steps required for the data analysis.
+C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu et.al Cell 2017). The CAPTURE-3C-seq method now is widely used and highly contributed to studies of the cancer epigenetics and other fundamental biological questions. , Here C3S is introduced to analyse CAPTURE-3C-seq data from raw sequencing reads to significantly interacted chromatin loci. It uses multiplescale Bayesian models for the significance calling of chromatin interactions, especialluy providing different models to analyse intra- and inter-chromosomal chromatin interactions for different mammalian species. It oprovides a versatile and flexible pipeline to analyze the dCas9 Capture-3C-Seq data.
 
 =============================
 
@@ -59,7 +59,7 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
 - Optional parameters:
 
 +--------------------------------------+--------------------------------------------------------------+
-|--bait chr11:5305934                  |Bait genomic locus. [Default="chr11:5305934"]                 |
+|--bait chr position                   |Bait genomic locus. [For example "chr11:5305934"]             |
 +--------------------------------------+--------------------------------------------------------------+
 |--extendsize 100000                   |Length to be extended from bait regions. [Defaut=100000].     |
 +--------------------------------------+--------------------------------------------------------------+
