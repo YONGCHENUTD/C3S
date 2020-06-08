@@ -106,3 +106,7 @@ Reads file2: SRR5583324_2.fastq.gz https://drive.google.com/file/d/1lN8ahayDZUzu
 
 5. Citations of C3S
 ----------------------------------
+
+Yong Chen, Yunfei Wang, Xin Liu, Jian Xu, Michael Q. Zhang. Model-based Analysis of Chromatin Interactions from dCas9-Based CAPTURE-3C-seq. PLOS ONE
+Liu X, Zhang Y, Chen Y, et al. In Situ Capture of Chromatin Interactions by Biotinylated dCas9. Cell. 2017;170(5):1028‐1043.e19. doi:10.1016/j.cell.2017.08.003
+  
