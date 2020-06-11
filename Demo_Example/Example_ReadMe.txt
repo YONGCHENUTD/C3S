@@ -10,13 +10,50 @@ Reads file1: SRR5583324_1.fastq.gz https://drive.google.com/file/d/1tHhPFmEZ0SUK
 Reads file2: SRR5583324_2.fastq.gz https://drive.google.com/file/d/1lN8ahayDZUzuO8auyzonIzoyacx7RdMF/view?usp=sharing
 
 ### You need download the genome version you need for bowtie2 mapping from bowtie2 website. For example, 
-> wget ftp://ftp.ncbi.nlm.nih.gov/genomes/archive/old_genbank/Eukaryotes/vertebrates_mammals/Homo_sapiens/GRCh38/seqs_for_alignment_pipelines/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.bowtie_index.tar.gz 
-### Or, you can build by yourself. 
-> wget http://hgdownload.cse.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz
-> samtools faidx hg38.fa.gz chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY >hg38_basic.fa
-> bowtie2-build hg38_basic.fa hg38_basic
-  
+### download the genome sequence file:
+> wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_34/GRCh38.primary_assembly.genome.fa.gz
+> gunzip GRCh38.primary_assembly.genome.fa.gz
+
+### Extract the reference genomes
+> samtools faidx GRCh38.primary_assembly.genome.fa chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY >hg38_ref.fa
+
+### Build bowtie2 index
+> bowtie2-build hg38_ref.fa
+
 ### Now you have your data and genome available. You can run C3S command as following.
-> runC3S.py -x hg38 or hg38_basic -1 RR5583324_1.fastq.gz -2 RR5583324_1.fastq.gz sample_R2.fastq.gz --prefix HS3 --bait chr11:5305934
+> runC3S.py -x hg38_ref -1 RR5583324_1.fastq.gz -2 RR5583324_1.fastq.gz sample_R2.fastq.gz --prefix HS3 --bait chr11:5305934
 
 ### After running, you will have results in current folder 
+/010ReadMapping:
+HS3_R1_bowtie2.log
+HS3_R1_un.fastq.gz
+HS3_R1_samtools.log
+HS3_R1.bam
+HS3_R1_flagstat.log
+HS3_R2_bowtie2.log
+HS3_R2_un.fastq.gz
+HS3_R2_samtools.log
+HS3_R2.bam
+HS3_R2_flagstat.log
+HS3_R1_split.fastq.gz
+HS3_R2_split.fastq.gz
+HS3_R1_remap_bowtie2.log
+HS3_R1_remap_un.fastq.gz
+HS3_R1_remap_samtools.log
+HS3_R1_remap.bam
+HS3_R1_remap_flagstat.log
+HS3_R2_remap_bowtie2.log
+HS3_R2_remap_un.fastq.gz
+HS3_R2_remap_samtools.log
+HS3_R2_remap.bam
+HS3_R2_remap_flagstat.log
+HS3.pairs.gz
+HS3.pairs.gz.tbi
+
+/020Plotting:
+HS3_stats.pdf
+
+/030Model:
+HS3_wu.bedpairs
+
+
