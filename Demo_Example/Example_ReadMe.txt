@@ -9,7 +9,7 @@ The CAPTURE-3C-seq data is HS3 enhancer of K562 cell line that downloaded from N
 Reads file1: SRR5583324_1.fastq.gz https://drive.google.com/file/d/1tHhPFmEZ0SUKHh4MoTK5vP3Xl5Mjp8G9/view?usp=sharing
 Reads file2: SRR5583324_2.fastq.gz https://drive.google.com/file/d/1lN8ahayDZUzuO8auyzonIzoyacx7RdMF/view?usp=sharing
 
-### You need download the genome version you need for bowtie2 mapping from bowtie2 website. For example, 
+### You need download the genome version you need for bowtie2 mapping from bowtie2 website. For example, to build GRCh38.
 ### download the genome sequence file:
 > wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_34/GRCh38.primary_assembly.genome.fa.gz
 > gunzip GRCh38.primary_assembly.genome.fa.gz
