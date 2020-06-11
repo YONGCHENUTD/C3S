@@ -129,13 +129,17 @@ HS3_R2_remap_un.fastq.gz
 HS3_R2_remap_samtools.log
 HS3_R2_remap.bam
 HS3_R2_remap_flagstat.log
+
 HS3.pairs.gz
+
 HS3.pairs.gz.tbi
 
 /020Plotting:
+
 HS3_stats.pdf
 
 /030Model:
+
 HS3_wu.bedpairs
 
 5. Citations of C3S
