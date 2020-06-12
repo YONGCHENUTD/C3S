@@ -9,19 +9,26 @@ The CAPTURE-3C-seq data is HS3 enhancer of K562 cell line that downloaded from N
 Reads file1: SRR5583324_1.fastq.gz https://drive.google.com/file/d/1tHhPFmEZ0SUKHh4MoTK5vP3Xl5Mjp8G9/view?usp=sharing
 Reads file2: SRR5583324_2.fastq.gz https://drive.google.com/file/d/1lN8ahayDZUzuO8auyzonIzoyacx7RdMF/view?usp=sharing
 
-### You need download the genome version you need for bowtie2 mapping from bowtie2 website. For example, to build GRCh38.
+### You need download the genome version you need for bowtie2 mapping from bowtie2 website. For example, to build hg19.
+
 ### download the genome sequence file:
-> wget ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_34/GRCh38.primary_assembly.genome.fa.gz
-> gunzip GRCh38.primary_assembly.genome.fa.gz
+
+> wget http://hgdownload.cse.ucsc.edu/goldenpath/hg19/bigZips/hg19.fa.gz
+
+> gunzip hg19.fa.gz
 
 ### Extract the reference genomes
-> samtools faidx GRCh38.primary_assembly.genome.fa chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY >hg38_ref.fa
+
+> samtools faidx hg19.fa chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY >hg19_basic.fa
 
 ### Build bowtie2 index
-> bowtie2-build hg38_ref.fa hg38_ref
+
+> bowtie2-build hg19_basic.fa hg19_basic
 
 ### Now you have your data and genome available. You can run C3S command as following.
-> runC3S.py -x hg38_ref -1 SRR5583324_1.fastq.gz -2 SRR5583324_1.fastq.gz --prefix HS3 --bait chr11:5305934
+
+> runC3S.py -x hg19_basic -1 SRR5583324_1.fastq.gz -2 SRR5583324_2.fastq.gz --prefix HS3 --bait chr11:5305934
+
 
 ### After running, you will have results in current folder 
 /010ReadMapping:
