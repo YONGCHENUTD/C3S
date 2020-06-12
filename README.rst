@@ -111,11 +111,11 @@ Reads file2: SRR5583324_2.fastq.gz https://drive.google.com/file/d/1lN8ahayDZUzu
 
 ### Build bowtie2 index
 
-> bowtie2-build hg38_ref.fa
+> bowtie2-build hg38_ref.fa hg38_ref
 
 ### Now you have your data and genome available. You can run C3S command as following.
 
-> runC3S.py -x hg38_ref -1 RR5583324_1.fastq.gz -2 RR5583324_1.fastq.gz sample_R2.fastq.gz --prefix HS3 --bait chr11:5305934
+> runC3S.py -x hg38_ref -1 SRR5583324_1.fastq.gz -2 SRR5583324_2.fastq.gz --prefix HS3 --bait chr11:5305934
 
 ### After running, you will have results in current folder 
 
