@@ -1,5 +1,5 @@
 This folder includes all mapping files. The reads pairs are mapped separately by using Bowtie2. 
-The following would the outputted file list ().
+The following would the outputted file list (the real data is omitted here because of big file sizes).
 HS3_R1_bowtie2.log
 HS3_R1_un.fastq.gz
 HS3_R1_samtools.log
