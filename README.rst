@@ -165,9 +165,12 @@ Here is an demo example. The CAPTURE-3C-seq data is HS3 enhancer of K562 cell li
 
 ::
 
-Yong Chen, Yunfei Wang, Xin Liu, Jian Xu, Michael Q. Zhang. Model-based Analysis of Chromatin Interactions from dCas9-Based CAPTURE-3C-seq. PLOS ONE
+  Yong Chen, Yunfei Wang, Xin Liu, Jian Xu, Michael Q. Zhang. Model-based Analysis of Chromatin Interactions from dCas9-Based CAPTURE-3C-seq. PLOS ONE
 
-Liu X, Zhang Y, Chen Y, et al. In Situ Capture of Chromatin Interactions by Biotinylated dCas9. Cell. 2017;170(5):1028‐1043.e19. doi:10.1016/j.cell.2017.08.003
+
+::
+
+  Liu X, Zhang Y, Chen Y, et al. In Situ Capture of Chromatin Interactions by Biotinylated dCas9. Cell. 2017;170(5):1028‐1043.e19. doi:10.1016/j.cell.2017.08.003
 
 
   
