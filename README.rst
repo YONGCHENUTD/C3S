@@ -146,9 +146,9 @@ Here is an demo example. The CAPTURE-3C-seq data is HS3 enhancer of K562 cell li
     ├── HS3.pairs.gz
     ├── HS3.pairs.gz.tbi
   /020Plotting:
-    |-HS3_stats.pdf
+    ├── HS3_stats.pdf
   /030Model:
-    |-HS3_wu.bedpairs
+    ├── HS3_wu.bedpairs
 
 5. Citations of C3S
 ----------------------------------
