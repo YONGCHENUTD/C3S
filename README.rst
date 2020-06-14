@@ -83,16 +83,11 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
 
 Here is an demo example. The CAPTURE-3C-seq data is HS3 enhancer of K562 cell line that downloaded from NCBI GEO with access number of GSM2635075. The SRA number is SRR5583324. The central position of sgRNA target of this HS3 region is chr11:5305934.
 
-- Download the SRA file using prefetch. The downloaded file is in ~/ncbi/public/sra by default. (SRA Toolkit: https://github.com/ncbi/sra-tools). 
+- Download the SRA file using prefetch. Then dump the fastq reads from the SRA file. (SRA Toolkit: https://github.com/ncbi/sra-tools). 
 
 ::
 
 > prefetch SRR5583324
-
-- Dump fastq reads from SRR5583324.sra
-
-::
-
 > fastq-dump --split-3 --helicos --gzip  ~/ncbi/public/sra/SRR5583324.sra
 
 
@@ -104,18 +99,13 @@ Here is an demo example. The CAPTURE-3C-seq data is HS3 enhancer of K562 cell li
 > wget "https://drive.google.com/file/d/1lN8ahayDZUzuO8auyzonIzoyacx7RdMF/view?usp=sharing" -O SRR5583324_2.fastq.gz
 
 
-- Download the human genome sequence file, and get rid of the non-refernece chromosomes.
+- Download the human genome sequence file, and get rid of the non-refernece chromosomes. Then build the bowtie2 index.
 
 ::
 
 > wget http://hgdownload.cse.ucsc.edu/goldenpath/hg19/bigZips/hg19.fa.gz
 > gunzip hg19.fa.gz
 > samtools faidx hg19.fa chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22 chrX chrY >hg19_basic.fa
-
-- Build bowtie2 index
-
-::
-
 > bowtie2-build hg19_basic.fa hg19_basic
 
 
