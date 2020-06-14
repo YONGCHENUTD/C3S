@@ -122,68 +122,46 @@ Here is an demo example. The CAPTURE-3C-seq data is HS3 enhancer of K562 cell li
 - Run C3S using the folloing command:
 
 ::
+
 > runC3S.py -x hg19_basic -1 SRR5583324_1.fastq.gz -2 SRR5583324_2.fastq.gz --prefix HS3 --bait chr11:5305934
 
 
 - Result files: 
 
+::
+
 /010ReadMapping:
 
-HS3_R1_bowtie2.log
-
-HS3_R1_un.fastq.gz
-
-HS3_R1_samtools.log
-
-HS3_R1.bam
-
-HS3_R1_flagstat.log
-
-HS3_R2_bowtie2.log
-
-HS3_R2_un.fastq.gz
-
-HS3_R2_samtools.log
-
-HS3_R2.bam
-
-HS3_R2_flagstat.log
-
-HS3_R1_split.fastq.gz
-
-HS3_R2_split.fastq.gz
-
-HS3_R1_remap_bowtie2.log
-
-HS3_R1_remap_un.fastq.gz
-
-HS3_R1_remap_samtools.log
-
-HS3_R1_remap.bam
-
-HS3_R1_remap_flagstat.log
-
-HS3_R2_remap_bowtie2.log
-
-HS3_R2_remap_un.fastq.gz
-
-HS3_R2_remap_samtools.log
-
-HS3_R2_remap.bam
-
-HS3_R2_remap_flagstat.log
-
-HS3.pairs.gz
-
-HS3.pairs.gz.tbi
-
+  HS3_R1_bowtie2.log
+  HS3_R1_un.fastq.gz
+  HS3_R1_samtools.log
+  HS3_R1.bam
+  HS3_R1_flagstat.log
+  HS3_R2_bowtie2.log
+  HS3_R2_un.fastq.gz
+  HS3_R2_samtools.log
+  HS3_R2.bam
+  HS3_R2_flagstat.log
+  HS3_R1_split.fastq.gz
+  HS3_R2_split.fastq.gz
+  HS3_R1_remap_bowtie2.log
+  HS3_R1_remap_un.fastq.gz
+  HS3_R1_remap_samtools.log
+  HS3_R1_remap.bam
+  HS3_R1_remap_flagstat.log
+  HS3_R2_remap_bowtie2.log
+  HS3_R2_remap_un.fastq.gz
+  HS3_R2_remap_samtools.log
+  HS3_R2_remap.bam
+  HS3_R2_remap_flagstat.log
+  HS3.pairs.gz
+  HS3.pairs.gz.tbi
+  
 /020Plotting:
-
-HS3_stats.pdf
+  HS3_stats.pdf
 
 /030Model:
-
-HS3_wu.bedpairs
+  HS3_wu.bedpairs
 
 5. Citations of C3S
 ----------------------------------
