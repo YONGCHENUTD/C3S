@@ -83,7 +83,8 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
 
 Here is an demo example. The CAPTURE-3C-seq data is HS3 enhancer of K562 cell line that downloaded from NCBI GEO with access number of GSM2635075. The SRA number is SRR5583324. The central position of sgRNA target of this HS3 region is chr11:5305934.
 
-- You can download it with following command under current folder.
+- Download the SRA file using prefetch (SRA-toolkit_ is required) 
+.. _SRA-toolkit: <https://github.com/ncbi/sra-tools>
 
 ::
 
