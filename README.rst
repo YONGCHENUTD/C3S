@@ -68,8 +68,7 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
 +--------------------------------------+--------------------------------------------------------------+
 |-smooth-window 101                    |Smooth window for peak size inference. [Default=101].         |
 +--------------------------------------+--------------------------------------------------------------+
-|--model-number 11                     |Number of NB models for statistical testing of                |
-|                                       intra-chromosomal interactions. [Default=11]                  |
+|--model-number 11                     |Number of NB models used for testing. [Default=11]            |
 +--------------------------------------+--------------------------------------------------------------+
 |--nperm 10000                         |Number of permutatons. [Default=10000].                       |
 +--------------------------------------+--------------------------------------------------------------+
