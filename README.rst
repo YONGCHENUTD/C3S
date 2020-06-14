@@ -39,9 +39,9 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
 
   usage: runC3S.py -x hg38 -1 sample_R1.fastq.gz [sample_R1.fastq.gz ...] -2
                  sample_R2.fastq.gz [sample_R2.fastq.gz ...] --prefix prefix
-                 [--bait chr11:5305934] [--extendsize 100000] [--readlen 36]
+                 [--bait your sgRNA-target] [--extendsize 100000] [--readlen 36]
                  [--seed 1024] [--smooth-window 100] [--nperm 10000] [-w "."]
-                 [-p 10]
+                 [-p 10] [--model-number 11]
 
 - Required parameters:
 
@@ -52,9 +52,9 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
 +--------------------------------------+--------------------------------------------------------------+
 |-1 S1_R2.fastq.gz [S2_R2.fastq.gz ...]|Read 2 fastq file. Can be gzip(.gz) or bzip2(.bz2) compressed.|
 +--------------------------------------+--------------------------------------------------------------+
-|--prefix                              |Prefix of result files.                                       |
+|--prefix your prefered prefix         |Prefix of result files.                                       |
 +--------------------------------------+--------------------------------------------------------------+
-|--bait chr position                   |Bait genomic locus. [For example "chr11:5305934"]             |
+|--bait your sgRNA-target              |The central position of sgRNA targets. [e.g. "chr11:5305934"] |
 +--------------------------------------+--------------------------------------------------------------+
 
 - Optional parameters:
@@ -68,7 +68,8 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
 +--------------------------------------+--------------------------------------------------------------+
 |-smooth-window 101                    |Smooth window for peak size inference. [Default=101].         |
 +--------------------------------------+--------------------------------------------------------------+
-|--num-of-bins 11                      |Number of bins for the intra-chromosomal interaction.         |
+|--model-number 11                     |Number of NB models for statistical testing of                |
+|                                       intra-chromosomal interactions. [Default=11]                  |
 +--------------------------------------+--------------------------------------------------------------+
 |--nperm 10000                         |Number of permutatons. [Default=10000].                       |
 +--------------------------------------+--------------------------------------------------------------+
@@ -83,7 +84,7 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
 
 ::
 
-Here is an demo example. The CAPTURE-3C-seq data is HS3 enhancer of K562 cell line that downloaded from NCBI GEO with access number of GSM2635075. The SRA number is SRR5583324. The central position of sgRNA target of this HS3 region is chr11:5305934.
+Here is an demo example. The CAPTURE-3C-seq data of HS3 enhancer of K562 cell line was downloaded from NCBI GEO with access number of GSM2635075. The SRA number is SRR5583324. The central position of sgRNA target of this HS3 region is chr11:5305934.
 
 - Download the SRA file using prefetch. Then dump the fastq reads from the SRA file. (SRA Toolkit: https://github.com/ncbi/sra-tools). 
 
