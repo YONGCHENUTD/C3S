@@ -39,7 +39,7 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
 
   usage: runC3S.py -x hg38 -1 sample_R1.fastq.gz [sample_R1.fastq.gz ...] -2
                  sample_R2.fastq.gz [sample_R2.fastq.gz ...] --prefix prefix
-                 [--bait your sgRNA-target] [--extendsize 100000] [--readlen 36]
+                 [--bait sgRNA-target] [--extendsize 100000] [--readlen 36]
                  [--seed 1024] [--smooth-window 100] [--nperm 10000] [-w "."]
                  [-p 10] [--model-number 11]
 
@@ -52,9 +52,9 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
 +--------------------------------------+--------------------------------------------------------------+
 |-1 S1_R2.fastq.gz [S2_R2.fastq.gz ...]|Read 2 fastq file. Can be gzip(.gz) or bzip2(.bz2) compressed.|
 +--------------------------------------+--------------------------------------------------------------+
-|--prefix your prefered prefix         |Prefix of result files.                                       |
+|--prefix prefix                       |Prefix of result files.                                       |
 +--------------------------------------+--------------------------------------------------------------+
-|--bait your sgRNA-target              |The central position of sgRNA targets. [e.g. "chr11:5305934"] |
+|--bait sgRNA-target                   |The central position of sgRNA target. [e.g. "chr11:5305934"]  |
 +--------------------------------------+--------------------------------------------------------------+
 
 - Optional parameters:
