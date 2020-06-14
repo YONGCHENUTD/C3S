@@ -130,40 +130,43 @@ Here is an demo example. The CAPTURE-3C-seq data is HS3 enhancer of K562 cell li
 
 ::
 
-/010ReadMapping:
-|-HS3_R1_bowtie2.log
-|-HS3_R1_un.fastq.gz
-|-HS3_R1_samtools.log
-|-HS3_R1.bam
-|-HS3_R1_flagstat.log
-|-HS3_R2_bowtie2.log
-|-HS3_R2_un.fastq.gz
-|-HS3_R2_samtools.log
-|-HS3_R2.bam
-|-HS3_R2_flagstat.log
-|-HS3_R1_split.fastq.gz
-|-HS3_R2_split.fastq.gz
-|-HS3_R1_remap_bowtie2.log
-|-HS3_R1_remap_un.fastq.gz
-|-HS3_R1_remap_samtools.log
-|-HS3_R1_remap.bam
-|-HS3_R1_remap_flagstat.log
-|-HS3_R2_remap_bowtie2.log
-|-HS3_R2_remap_un.fastq.gz
-|-HS3_R2_remap_samtools.log
-|-HS3_R2_remap.bam
-|-HS3_R2_remap_flagstat.log
-|-HS3.pairs.gz
-|-HS3.pairs.gz.tbi
-/020Plotting:
-|-HS3_stats.pdf
-/030Model:
-|-HS3_wu.bedpairs
+  /010ReadMapping:
+    ├── HS3_R1_bowtie2.log
+    ├── HS3_R1_un.fastq.gz
+    ├── HS3_R1_samtools.log
+    ├── HS3_R1.bam
+    ├── HS3_R1_flagstat.log
+    ├── HS3_R2_bowtie2.log
+    ├── HS3_R2_un.fastq.gz
+    ├── HS3_R2_samtools.log
+    ├── HS3_R2.bam
+    ├── HS3_R2_flagstat.log
+    ├── HS3_R1_split.fastq.gz
+    ├── HS3_R2_split.fastq.gz
+    ├── HS3_R1_remap_bowtie2.log
+    ├── HS3_R1_remap_un.fastq.gz
+    ├── HS3_R1_remap_samtools.log
+    ├── HS3_R1_remap.bam
+    ├── HS3_R1_remap_flagstat.log
+    ├── HS3_R2_remap_bowtie2.log
+    ├── HS3_R2_remap_un.fastq.gz
+    ├── HS3_R2_remap_samtools.log
+    ├── HS3_R2_remap.bam
+    ├── HS3_R2_remap_flagstat.log
+    ├── HS3.pairs.gz
+    ├── HS3.pairs.gz.tbi
+  /020Plotting:
+    |-HS3_stats.pdf
+  /030Model:
+    |-HS3_wu.bedpairs
 
 5. Citations of C3S
 ----------------------------------
 
-Yong Chen, Yunfei Wang, Xin Liu, Jian Xu, Michael Q. Zhang. Model-based Analysis of Chromatin Interactions from dCas9-Based CAPTURE-3C-seq. PLOS ONE
+::
 
+Yong Chen, Yunfei Wang, Xin Liu, Jian Xu, Michael Q. Zhang. Model-based Analysis of Chromatin Interactions from dCas9-Based CAPTURE-3C-seq. PLOS ONE
 Liu X, Zhang Y, Chen Y, et al. In Situ Capture of Chromatin Interactions by Biotinylated dCas9. Cell. 2017;170(5):1028‐1043.e19. doi:10.1016/j.cell.2017.08.003
+
+
   
