@@ -33,6 +33,7 @@ import numpy
 import pysam
 import pandas
 import matplotlib
+matplotlib.use("Agg")
 from scipy import stats
 import statsmodels.api as sm
 
