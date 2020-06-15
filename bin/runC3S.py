@@ -44,11 +44,11 @@ def argParser():
     pr.add_argument("-1",dest="fq1",type=str,metavar='sample_R1.fastq.gz',nargs="+",required=True,help="Read 1 fastq file. Can be gzip(.gz) or bzip2(.bz2) compressed.")
     pr.add_argument("-2",dest="fq2",type=str,metavar='sample_R2.fastq.gz',nargs="+",required=True,help="Read 2 fastq file. Can be gzip(.gz) or bzip2(.bz2) compressed.")
     pr.add_argument("--prefix",dest="prefix",type=str,metavar='prefix',required=True,help="Prefix of result files.")
-    pr.add_argument("--bait",dest="bait",type=str,metavar="chr11:5305934",required=True,help="Central position of the sgRNA target. [e.g. \"chr11:5305934\"]")
+    pr.add_argument("--bait",dest="bait",type=str,metavar="chr11:5305934",default="chr11:5305934",help="Bait genomic locus. [Default=\"chr11:5305934\"]")
 
     po = p.add_argument_group('Optional')
     po.add_argument("--extendsize",dest="extendsize",type=int,metavar="100000",default=100000,help="Length to be extended from bait regions. [Defaut=100000]")
-    po.add_argument("--readlen",dest="readlen",type=int,metavar="36",default=36,help="Read length. [Default=36]")
+    po.add_argument("--readlen",dest="readlen",type=int,metavar="36",default=36,help="Read length. [Default=36].")
     po.add_argument("--seed",dest="seed",type=int,metavar="1024",default=1024,help="Seed to generate random values. [Default=1024].")
     po.add_argument("--smooth-window",dest="smooth_window",type=int,metavar="100",default=100,help="Smooth window for peak size inference. [Default=100].")
     po.add_argument("--model-number",dest="nbins",type=int,metavar="11",default=11,help="Number of NB models used for testing. [Default=11].")
