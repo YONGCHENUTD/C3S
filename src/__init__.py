@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -- coding:utf-8 --
-# Last-modified: 12 June 2020 10:39:37 PM
+# Last-modified: 12 June 2020 10:48:53 PM
 #
 #         Module/Scripts Description
 # 
@@ -33,7 +33,7 @@ import numpy
 import pysam
 import pandas
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use('Agg')
 from scipy import stats
 import statsmodels.api as sm
 
