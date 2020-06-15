@@ -44,7 +44,7 @@ def argParser():
     pr.add_argument("-1",dest="fq1",type=str,metavar='sample_R1.fastq.gz',nargs="+",required=True,help="Read 1 fastq file. Can be gzip(.gz) or bzip2(.bz2) compressed.")
     pr.add_argument("-2",dest="fq2",type=str,metavar='sample_R2.fastq.gz',nargs="+",required=True,help="Read 2 fastq file. Can be gzip(.gz) or bzip2(.bz2) compressed.")
     pr.add_argument("--prefix",dest="prefix",type=str,metavar='prefix',required=True,help="Prefix of result files.")
-    pr.add_argument("--bait",dest="bait",type=str,metavar="chr11:5305934",default="chr11:5305934",help="Bait genomic locus. [Default=\"chr11:5305934\"]")
+    pr.add_argument("--bait",dest="bait",type=str,metavar="chr11:5305934",required=True,help="Bait genomic locus. [Default=\"chr11:5305934\"]")
 
     po = p.add_argument_group('Optional')
     po.add_argument("--extendsize",dest="extendsize",type=int,metavar="100000",default=100000,help="Length to be extended from bait regions. [Defaut=100000]")
