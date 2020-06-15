@@ -1,18 +1,18 @@
 #!/usr/bin/python
-#Last-modified: 15 Oct 2019 10:37:11 PM
+#Last-modified: 12 June 2020 10:37:11 PM
 
 #         Module/Scripts Description
 # 
-# Copyright (c) 2019 The Unversity of Texas at Dallas
+# Copyright (c) 2020 Rowan University
 # 
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the BSD License (see the file COPYING included with
 # the distribution).
 # 
 # @version: 1.1.0
-# @design: Yong Chen <yongchenutd@gmail.com>
+# @design: Yong Chen <chenyong@rowan.edu>
 # @implementation: Yunfei Wang <yfwang0405@gmail.com>
-# @corresponding author:  Michael Q. Zhang <michael.zhang@utdallas.edu>
+# @corresponding author:  Yong Chen <chenyong@rowan.edu>
 
 # ------------------------------------
 # python modules
