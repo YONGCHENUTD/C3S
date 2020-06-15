@@ -54,7 +54,7 @@ C3S is a model-based analysis and pipeline of dCas9 Capture-3C-Seq data (Xin Liu
 +--------------------------------------+--------------------------------------------------------------+
 |--prefix prefix                       |Prefix of result files.                                       |
 +--------------------------------------+--------------------------------------------------------------+
-|--bait chr11:5305934                  |The central position of sgRNA target. [e.g. "chr11:5305934"] |
+|--bait chr11:5305934                  |The central position of sgRNA target. [e.g. "chr11:5305934"]  |
 +--------------------------------------+--------------------------------------------------------------+
 
 - Optional parameters:
