@@ -1,6 +1,6 @@
 **C3S: model-based analysis and pipeline of dCas9 Capture-3C-Seq data**
 
-C3S is a model-based analysis pipeline of dCas9 Capture-3C-Seq data (Xin Liu et.al Cell 2017). The CAPTURE-3C-seq method now is widely used and highly contributed to studies of the cancer epigenetics and other fundamental biological questions. Here C3S is introduced to analyze CAPTURE-3C-seq data from raw sequencing reads to significantly interacting chromatin loci. It uses multiplescale Bayesian models for the significance calling of chromatin interactions, especially providing different models to analyse intra- and inter-chromosomal chromatin interactions. It provides a versatile and flexible pipeline to analyze the dCas9 Capture-3C-Seq data. Its outputted results can be directly used for direct visualization through WashU Genome browser.
+C3S is a model-based analysis pipeline of dCas9 Capture-3C-Seq data (Xin Liu et.al Cell 2017). The CAPTURE-3C-seq method now is widely used and highly contributed to studies of the cancer epigenetics and other fundamental biological questions. Here C3S is introduced to analyze CAPTURE-3C-seq data from raw sequencing reads to significantly interacting chromatin loci. It uses multiplescale Bayesian models for the significance calling of intra- and inter-chromatin interactions. It provides a versatile and flexible pipeline to analyze the dCas9 Capture-3C-Seq data. Its outputted results can be directly used for direct visualization through WashU Genome browser.
 
 =============================
 
@@ -83,7 +83,7 @@ C3S is a model-based analysis pipeline of dCas9 Capture-3C-Seq data (Xin Liu et.
 
 ::
 
-Here is an demo example. The CAPTURE-3C-seq data of HS3 enhancer of K562 cell line was downloaded from NCBI GEO with access number of GSM2635075. The SRA number is SRR5583324. The central position of sgRNA target of this HS3 region is chr11:5305934.
+Here is a demo example. The CAPTURE-3C-seq data of HS3 enhancer of K562 cell line was downloaded from NCBI GEO with access number of GSM2635075. The SRA number is SRR5583324. The central position of sgRNA target of this HS3 region is chr11:5305934.
 
 - Download the SRA file using prefetch. Then dump the fastq reads from the SRA file. (SRA Toolkit: https://github.com/ncbi/sra-tools). 
 
