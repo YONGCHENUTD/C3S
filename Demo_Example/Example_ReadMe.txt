@@ -1,4 +1,4 @@
-Here is an demo example. The CAPTURE-3C-seq data of HS3 enhancer of K562 cell line was downloaded from NCBI GEO with access number of GSM2635075. The SRA number is SRR5583324. The central position of sgRNA target of this HS3 region is chr11:5305934.
+Here is a demo example. The CAPTURE-3C-seq data of HS3 enhancer of K562 cell line was downloaded from NCBI GEO with access number of GSM2635075. The SRA number is SRR5583324. The central position of sgRNA target of this HS3 region is chr11:5305934.
 
 You can download the SRA file using prefetch. Then dump the fastq reads from the SRA file. (SRA Toolkit: https://github.com/ncbi/sra-tools).
 > prefetch SRR5583324
